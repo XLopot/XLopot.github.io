@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeverLose Launcher</title>
+    <!-- Подключаем Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
         body { background: #0a0a1a; color: white; height: 100vh; overflow: hidden; }
@@ -55,6 +57,13 @@
     </div>
 
     <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand(); // Раскрываем на весь экран
+            tg.enableClosingConfirmation(); // Подтверждение перед закрытием
+        }
+
         // Elements
         const downloadBtn = document.getElementById('downloadBtn');
         const launchBtn = document.getElementById('launchBtn');
@@ -72,6 +81,13 @@
         // App state
         let isRegistered = localStorage.getItem('isRegistered') === 'true';
         let currentUser = JSON.parse(localStorage.getItem('user')) || null;
+
+        // Автозаполнение данных из Telegram (если пользователь авторизован)
+        if (tg?.initDataUnsafe?.user) {
+            const tgUser = tg.initDataUnsafe.user;
+            usernameInput.value = tgUser.username || '';
+            emailInput.value = `${tgUser.id}@tguser.com`; // Пример email
+        }
 
         // Init
         function init() {
@@ -111,6 +127,14 @@
             registerModal.style.display = 'none';
             profileBtn.style.display = 'block';
             registerBtnTop.style.display = 'none';
+
+            // Отправляем данные в бота (опционально)
+            if (tg) {
+                tg.sendData(JSON.stringify({
+                    action: 'register',
+                    user: currentUser
+                }));
+            }
         });
 
         // Button events
@@ -123,6 +147,13 @@
             }
             downloadBtn.style.display = 'none';
             launchBtn.style.display = 'block';
+        });
+
+        // Закрытие модалок по клику вне области
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
         });
 
         // Initialize
