@@ -3,242 +3,648 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ducky Casino</title>
+    <title>Golden Casino</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #FFD700;
+            --secondary: #1E1E2D;
+            --accent: #FF6B6B;
+            --dark: #12121A;
+            --light: #F8F8F8;
+            --success: #4CAF50;
+        }
+        
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Montserrat', sans-serif;
         }
         
         body {
-            background: #1a1a2e;
+            background: var(--secondary);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            margin-bottom: 30px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .balance {
+            background: rgba(30, 30, 45, 0.8);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+        }
+        
+        .balance-amount {
+            color: var(--primary);
+            margin-left: 5px;
+        }
+        
+        /* Main Menu */
+        .main-menu {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+        }
+        
+        .menu-btn {
+            background: linear-gradient(135deg, #2C3E50, #4CA1AF);
             color: white;
-            height: 100vh;
-            overflow: hidden;
+            border: none;
+            border-radius: 12px;
+            padding: 20px 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            position: relative;
+            height: 120px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         
-        .container {
-            width: 100%;
-            max-width: 400px;
-            padding: 20px;
-            text-align: center;
-            position: relative;
-            z-index: 2;
+        .menu-btn i {
+            font-size: 30px;
+            margin-bottom: 10px;
         }
         
-        .logo {
-            font-size: 48px;
-            font-weight: bold;
-            margin-bottom: 30px;
-            color: #ffcc00;
-            text-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+        .menu-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
         
-        .btn {
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #4169e1, #8a2be2);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            margin: 10px auto;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
-            width: 80%;
-            max-width: 250px;
-            box-shadow: 0 4px 15px rgba(65, 105, 225, 0.4);
-            transition: all 0.3s ease;
-            display: block;
+        .menu-btn:active {
+            transform: translateY(2px);
         }
         
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(65, 105, 225, 0.6);
-        }
-        
-        .btn:active {
-            transform: translateY(1px);
-        }
-        
-        .duck-animation {
-            position: absolute;
-            width: 150px;
-            height: 150px;
-            background-image: url('https://t.me/sticker/1/396');
-            background-size: contain;
-            background-repeat: no-repeat;
-            z-index: 1;
-            animation: fly 15s linear infinite;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-        
-        @keyframes fly {
-            0% {
-                transform: translate(-200px, 100px) rotate(0deg);
-                opacity: 1;
-            }
-            25% {
-                transform: translate(100px, -50px) rotate(20deg);
-            }
-            50% {
-                transform: translate(400px, 50px) rotate(0deg);
-            }
-            75% {
-                transform: translate(100px, 150px) rotate(-20deg);
-            }
-            100% {
-                transform: translate(-200px, 100px) rotate(0deg);
-                opacity: 1;
-            }
-        }
-        
-        .casino-table {
+        /* Casino Games */
+        .games-container {
             display: none;
-            width: 100%;
-            margin-top: 30px;
-            background: rgba(26, 26, 46, 0.8);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            margin-top: 20px;
         }
         
-        .slot-machine {
+        .game-card {
+            background: rgba(30, 30, 45, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
             display: flex;
-            justify-content: center;
-            margin: 20px 0;
+            align-items: center;
+            transition: all 0.3s ease;
         }
         
-        .slot {
+        .game-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-icon {
             width: 60px;
             height: 60px;
-            margin: 0 5px;
-            background: white;
-            border-radius: 10px;
+            background: var(--primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+            color: var(--secondary);
+        }
+        
+        .game-info {
+            flex: 1;
+        }
+        
+        .game-title {
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .game-desc {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        /* Profile */
+        .profile-container {
+            display: none;
+            background: rgba(30, 30, 45, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: var(--primary);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 30px;
-            font-weight: bold;
-            color: #1a1a2e;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+            color: var(--secondary);
+            margin-right: 15px;
         }
         
-        .spin-btn {
-            background: linear-gradient(135deg, #ff3333, #ff6600);
-            margin-top: 20px;
+        .profile-info h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
         }
         
-        .win-message {
-            margin-top: 20px;
-            font-size: 24px;
-            color: #ffcc00;
-            text-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(18, 18, 26, 0.6);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 5px 0;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        /* Referral System */
+        .referral-container {
             display: none;
+            background: rgba(30, 30, 45, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .referral-code {
+            background: rgba(18, 18, 26, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 18px;
+            letter-spacing: 2px;
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: var(--primary);
+            color: var(--secondary);
+            border: none;
+            border-radius: 5px;
+            padding: 3px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .referral-stats {
+            margin-top: 20px;
+        }
+        
+        /* Cases */
+        .cases-container {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .case-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .case-item {
+            background: rgba(30, 30, 45, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .case-item:hover {
+            transform: scale(1.03);
+        }
+        
+        .case-image {
+            width: 100%;
+            height: 100px;
+            background: var(--dark);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+        
+        .case-price {
+            color: var(--primary);
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        
+        /* Back Button */
+        .back-btn {
+            display: none;
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 8px 15px;
+            margin: 15px 0;
+            cursor: pointer;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Responsive */
+        @media (max-width: 400px) {
+            .main-menu {
+                grid-template-columns: 1fr;
+            }
+            
+            .case-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">DUCK CASINO</div>
-        <button id="launchBtn" class="btn">LAUNCH</button>
-        <div id="duck" class="duck-animation"></div>
-        
-        <div id="casinoTable" class="casino-table">
-            <h2>Lucky Slots</h2>
-            <div class="slot-machine">
-                <div class="slot" id="slot1">7</div>
-                <div class="slot" id="slot2">7</div>
-                <div class="slot" id="slot3">7</div>
+    <div class="app-container">
+        <div class="header">
+            <div class="logo">GOLDEN CASINO</div>
+            <div class="balance">
+                <i class="fas fa-coins"></i>
+                <span class="balance-amount" id="balance">10,000</span>
             </div>
-            <button id="spinBtn" class="btn spin-btn">SPIN</button>
-            <div id="winMessage" class="win-message">YOU WIN!</div>
+        </div>
+        
+        <button class="back-btn" id="backBtn">
+            <i class="fas fa-arrow-left"></i> Back
+        </button>
+        
+        <!-- Main Menu -->
+        <div class="main-menu" id="mainMenu">
+            <button class="menu-btn" id="gamesBtn">
+                <i class="fas fa-gamepad"></i>
+                Games
+            </button>
+            <button class="menu-btn" id="casesBtn">
+                <i class="fas fa-gift"></i>
+                Cases
+            </button>
+            <button class="menu-btn" id="profileBtn">
+                <i class="fas fa-user"></i>
+                Profile
+            </button>
+            <button class="menu-btn" id="referralBtn">
+                <i class="fas fa-users"></i>
+                Referral
+            </button>
+        </div>
+        
+        <!-- Games Section -->
+        <div class="games-container" id="gamesContainer">
+            <h2><i class="fas fa-gamepad"></i> Our Games</h2>
+            
+            <div class="game-card">
+                <div class="game-icon">
+                    <i class="fas fa-dice"></i>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Dice Roll</div>
+                    <div class="game-desc">Test your luck with classic dice game</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+            
+            <div class="game-card">
+                <div class="game-icon">
+                    <i class="fas fa-slot-machine"></i>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Slots</div>
+                    <div class="game-desc">Spin to win big jackpots</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+            
+            <div class="game-card">
+                <div class="game-icon">
+                    <i class="fas fa-chess"></i>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Blackjack</div>
+                    <div class="game-desc">Beat the dealer in classic 21</div>
+                </div>
+                <i class="fas fa-chevron-right"></i>
+            </div>
+        </div>
+        
+        <!-- Cases Section -->
+        <div class="cases-container" id="casesContainer">
+            <h2><i class="fas fa-gift"></i> Mystery Cases</h2>
+            <p>Open cases to get rare items and bonuses</p>
+            
+            <div class="case-grid">
+                <div class="case-item">
+                    <div class="case-image" style="background: linear-gradient(135deg, #8e9eab, #eef2f3);">
+                        <i class="fas fa-box-open" style="color: #8e9eab;"></i>
+                    </div>
+                    <div class="case-title">Basic Case</div>
+                    <div class="case-price">500 coins</div>
+                    <button class="btn-small">Open</button>
+                </div>
+                
+                <div class="case-item">
+                    <div class="case-image" style="background: linear-gradient(135deg, #a8ff78, #78ffd6);">
+                        <i class="fas fa-box-open" style="color: #a8ff78;"></i>
+                    </div>
+                    <div class="case-title">Premium Case</div>
+                    <div class="case-price">2,000 coins</div>
+                    <button class="btn-small">Open</button>
+                </div>
+                
+                <div class="case-item">
+                    <div class="case-image" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
+                        <i class="fas fa-box-open" style="color: #ff416c;"></i>
+                    </div>
+                    <div class="case-title">Rare Case</div>
+                    <div class="case-price">5,000 coins</div>
+                    <button class="btn-small">Open</button>
+                </div>
+                
+                <div class="case-item">
+                    <div class="case-image" style="background: linear-gradient(135deg, #fdc830, #f37335);">
+                        <i class="fas fa-box-open" style="color: #fdc830;"></i>
+                    </div>
+                    <div class="case-title">Legendary Case</div>
+                    <div class="case-price">10,000 coins</div>
+                    <button class="btn-small">Open</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profile Section -->
+        <div class="profile-container" id="profileContainer">
+            <div class="profile-header">
+                <div class="profile-avatar" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="profile-info">
+                    <h2 id="userName">Guest</h2>
+                    <div class="user-level">Level: <span id="userLevel">1</span></div>
+                </div>
+            </div>
+            
+            <div class="profile-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Games Played</div>
+                    <div class="stat-value" id="gamesPlayed">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Wins</div>
+                    <div class="stat-value" id="winsCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Won</div>
+                    <div class="stat-value" id="totalWon">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Referrals</div>
+                    <div class="stat-value" id="referralsCount">0</div>
+                </div>
+            </div>
+            
+            <button class="menu-btn" style="width: 100%; margin: 20px 0 0;">
+                <i class="fas fa-cog"></i>
+                Settings
+            </button>
+        </div>
+        
+        <!-- Referral Section -->
+        <div class="referral-container" id="referralContainer">
+            <h2><i class="fas fa-users"></i> Referral Program</h2>
+            <p>Invite friends and earn bonuses when they play!</p>
+            
+            <div class="referral-code">
+                <span id="referralCode">GOLDEN-XXXX</span>
+                <button class="copy-btn" id="copyBtn">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+            
+            <div class="referral-stats">
+                <h3>Your Referrals</h3>
+                <div class="stat-card" style="margin: 10px 0;">
+                    <div class="stat-label">Total Referrals</div>
+                    <div class="stat-value">5</div>
+                </div>
+                <div class="stat-card" style="margin: 10px 0;">
+                    <div class="stat-label">Earned</div>
+                    <div class="stat-value">2,500 coins</div>
+                </div>
+            </div>
+            
+            <button class="menu-btn" style="width: 100%; margin-top: 20px;">
+                <i class="fas fa-share-alt"></i>
+                Share Invite
+            </button>
         </div>
     </div>
 
     <script>
         // Инициализация Telegram WebApp
         const tg = window.Telegram?.WebApp;
-        if (tg) {
-            tg.expand();
-            tg.enableClosingConfirmation();
+        
+        // Элементы интерфейса
+        const elements = {
+            mainMenu: document.getElementById('mainMenu'),
+            gamesBtn: document.getElementById('gamesBtn'),
+            casesBtn: document.getElementById('casesBtn'),
+            profileBtn: document.getElementById('profileBtn'),
+            referralBtn: document.getElementById('referralBtn'),
+            backBtn: document.getElementById('backBtn'),
+            gamesContainer: document.getElementById('gamesContainer'),
+            casesContainer: document.getElementById('casesContainer'),
+            profileContainer: document.getElementById('profileContainer'),
+            referralContainer: document.getElementById('referralContainer'),
+            balance: document.getElementById('balance'),
+            userName: document.getElementById('userName'),
+            userAvatar: document.getElementById('userAvatar'),
+            referralCode: document.getElementById('referralCode'),
+            copyBtn: document.getElementById('copyBtn')
+        };
+        
+        // Состояние приложения
+        const state = {
+            balance: 10000,
+            currentScreen: 'main'
+        };
+        
+        // Инициализация
+        function init() {
+            setupEventListeners();
+            
+            if (tg?.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                elements.userName.textContent = user.first_name || 'Player';
+                elements.userAvatar.innerHTML = user.first_name ? user.first_name.charAt(0) : '<i class="fas fa-user"></i>';
+                
+                // Генерация реферального кода
+                const refCode = `GOLDEN-${user.id.toString().slice(-4)}`;
+                elements.referralCode.textContent = refCode;
+            }
+            
+            updateBalance();
         }
-
-        // Элементы
-        const launchBtn = document.getElementById('launchBtn');
-        const duck = document.getElementById('duck');
-        const casinoTable = document.getElementById('casinoTable');
-        const spinBtn = document.getElementById('spinBtn');
-        const slots = [
-            document.getElementById('slot1'),
-            document.getElementById('slot2'),
-            document.getElementById('slot3')
-        ];
-        const winMessage = document.getElementById('winMessage');
-
-        // Символы для слотов
-        const symbols = ['7', '🍒', '💰', '🦆', '🍀', '⭐'];
         
-        // Запуск анимации уточки
-        launchBtn.addEventListener('click', () => {
-            launchBtn.style.display = 'none';
-            duck.style.opacity = '1';
+        // Обновление баланса
+        function updateBalance() {
+            elements.balance.textContent = state.balance.toLocaleString();
+        }
+        
+        // Навигация
+        function showScreen(screen) {
+            elements.mainMenu.style.display = 'none';
+            elements.gamesContainer.style.display = 'none';
+            elements.casesContainer.style.display = 'none';
+            elements.profileContainer.style.display = 'none';
+            elements.referralContainer.style.display = 'none';
+            elements.backBtn.style.display = 'none';
             
-            // Через 3 секунды показываем казино
-            setTimeout(() => {
-                duck.style.opacity = '0';
-                casinoTable.style.display = 'block';
-            }, 3000);
-        });
-        
-        // Вращение слотов
-        spinBtn.addEventListener('click', () => {
-            spinBtn.disabled = true;
-            winMessage.style.display = 'none';
+            state.currentScreen = screen;
             
-            // Анимация вращения
-            let spins = 0;
-            const spinInterval = setInterval(() => {
-                slots.forEach(slot => {
-                    slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-                });
-                
-                spins++;
-                if (spins > 20) {
-                    clearInterval(spinInterval);
-                    checkWin();
-                    spinBtn.disabled = false;
-                }
-            }, 100);
-        });
-        
-        // Проверка выигрыша
-        function checkWin() {
-            if (slots[0].textContent === slots[1].textContent && 
-                slots[1].textContent === slots[2].textContent) {
-                winMessage.style.display = 'block';
-                
-                // Отправка сообщения в Telegram при выигрыше
-                if (tg) {
-                    tg.sendData(JSON.stringify({
-                        action: 'win',
-                        combination: slots[0].textContent
-                    }));
-                }
+            switch(screen) {
+                case 'main':
+                    elements.mainMenu.style.display = 'grid';
+                    break;
+                case 'games':
+                    elements.gamesContainer.style.display = 'block';
+                    elements.backBtn.style.display = 'block';
+                    break;
+                case 'cases':
+                    elements.casesContainer.style.display = 'block';
+                    elements.backBtn.style.display = 'block';
+                    break;
+                case 'profile':
+                    elements.profileContainer.style.display = 'block';
+                    elements.backBtn.style.display = 'block';
+                    break;
+                case 'referral':
+                    elements.referralContainer.style.display = 'block';
+                    elements.backBtn.style.display = 'block';
+                    break;
             }
         }
         
-        // Инициализация
-        if (tg?.initDataUnsafe?.user) {
-            document.querySelector('.logo').textContent += `\nHi, ${tg.initDataUnsafe.user.first_name || 'Player'}`;
+        // Обработчики событий
+        function setupEventListenrs() {
+            elements.gamesBtn.addEventListener('click', () => showScreen('games'));
+            elements.casesBtn.addEventListener('click', () => showScreen('cases'));
+            elements.profileBtn.addEventListener('click', () => showScreen('profile'));
+            elements.referralBtn.addEventListener('click', () => showScreen('referral'));
+            elements.backBtn.addEventListener('click', () => showScreen('main'));
+            
+            elements.copyBtn.addEventListener('click', () => {
+                const code = elements.referralCode.textContent;
+                navigator.clipboard.writeText(code);
+                elements.copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    elements.copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                }, 2000);
+            });
+            
+            // Анимация при наведении на кейсы
+            document.querySelectorAll('.case-item').forEach(item => {
+                item.addEventListener('mouseenter', () => {
+                    item.classList.add('pulse');
+                });
+                item.addEventListener('mouseleave', () => {
+                    item.classList.remove('pulse');
+                });
+            });
+        }
+        
+        // Запуск приложения
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Инициализация Telegram WebApp
+        if (tg) {
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            // Можно добавить обработку данных от Telegram
+            tg.onEvent('viewportChanged', () => {
+                tg.expand();
+            });
         }
     </script>
 </body>
