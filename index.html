@@ -3,56 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeverLose Launcher</title>
-    <!-- Подключаем Telegram WebApp API -->
+    <title>Ducky Casino</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: #0a0a1a; color: white; height: 100vh; overflow: hidden; }
-        .container { max-width: 400px; margin: 0 auto; padding: 20px; text-align: center; }
-        .logo { font-size: 72px; font-weight: bold; margin: 20px 0; }
-        .btn { padding: 12px 24px; background: #4169e1; color: white; border: none; border-radius: 30px; margin: 10px; cursor: pointer; }
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a2e; padding: 20px; border-radius: 10px; width: 90%; max-width: 350px; display: none; }
-        .form-group { margin: 15px 0; text-align: left; }
-        .form-group label { display: block; margin-bottom: 5px; }
-        .form-group input { width: 100%; padding: 10px; background: #0a0a1a; border: 1px solid #4169e1; color: white; border-radius: 5px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: #1a1a2e;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logo {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #4169e1, #8a2be2);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            margin: 10px auto;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 80%;
+            max-width: 250px;
+            box-shadow: 0 4px 15px rgba(65, 105, 225, 0.4);
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(65, 105, 225, 0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .duck-animation {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background-image: url('https://t.me/sticker/1/396');
+            background-size: contain;
+            background-repeat: no-repeat;
+            z-index: 1;
+            animation: fly 15s linear infinite;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        @keyframes fly {
+            0% {
+                transform: translate(-200px, 100px) rotate(0deg);
+                opacity: 1;
+            }
+            25% {
+                transform: translate(100px, -50px) rotate(20deg);
+            }
+            50% {
+                transform: translate(400px, 50px) rotate(0deg);
+            }
+            75% {
+                transform: translate(100px, 150px) rotate(-20deg);
+            }
+            100% {
+                transform: translate(-200px, 100px) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        .casino-table {
+            display: none;
+            width: 100%;
+            margin-top: 30px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .slot-machine {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .slot {
+            width: 60px;
+            height: 60px;
+            margin: 0 5px;
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            color: #1a1a2e;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .spin-btn {
+            background: linear-gradient(135deg, #ff3333, #ff6600);
+            margin-top: 20px;
+        }
+        
+        .win-message {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #ffcc00;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="logo">NL</div>
-        <button id="downloadBtn" class="btn">DOWNLOAD</button>
-        <button id="launchBtn" class="btn" style="display:none">LAUNCH</button>
-        <button id="profileBtn" class="btn" style="position:fixed; top:10px; left:10px">Profile</button>
-        <button id="registerBtnTop" class="btn" style="position:fixed; top:10px; right:10px; background:#4bb543">REGISTER</button>
-    </div>
-
-    <div id="registerModal" class="modal">
-        <h2>Register</h2>
-        <div class="form-group">
-            <label>Username:</label>
-            <input type="text" id="usernameInput" placeholder="Enter username">
-        </div>
-        <div class="form-group">
-            <label>Email:</label>
-            <input type="email" id="emailInput" placeholder="Enter email">
-        </div>
-        <div class="form-group">
-            <label>Password:</label>
-            <input type="password" id="passwordInput" placeholder="Enter password">
-        </div>
-        <button id="registerBtn" class="btn">REGISTER</button>
-    </div>
-
-    <div id="profileModal" class="modal">
-        <h2>Profile</h2>
-        <div class="form-group">
-            <label>Username:</label>
-            <div id="profileUsername">Not registered</div>
-        </div>
-        <div class="form-group">
-            <label>Status:</label>
-            <div id="profileStatus">Offline</div>
+        <div class="logo">DUCK CASINO</div>
+        <button id="launchBtn" class="btn">LAUNCH</button>
+        <div id="duck" class="duck-animation"></div>
+        
+        <div id="casinoTable" class="casino-table">
+            <h2>Lucky Slots</h2>
+            <div class="slot-machine">
+                <div class="slot" id="slot1">7</div>
+                <div class="slot" id="slot2">7</div>
+                <div class="slot" id="slot3">7</div>
+            </div>
+            <button id="spinBtn" class="btn spin-btn">SPIN</button>
+            <div id="winMessage" class="win-message">YOU WIN!</div>
         </div>
     </div>
 
@@ -60,104 +168,78 @@
         // Инициализация Telegram WebApp
         const tg = window.Telegram?.WebApp;
         if (tg) {
-            tg.expand(); // Раскрываем на весь экран
-            tg.enableClosingConfirmation(); // Подтверждение перед закрытием
+            tg.expand();
+            tg.enableClosingConfirmation();
         }
 
-        // Elements
-        const downloadBtn = document.getElementById('downloadBtn');
+        // Элементы
         const launchBtn = document.getElementById('launchBtn');
-        const profileBtn = document.getElementById('profileBtn');
-        const registerBtnTop = document.getElementById('registerBtnTop');
-        const registerModal = document.getElementById('registerModal');
-        const profileModal = document.getElementById('profileModal');
-        const registerBtn = document.getElementById('registerBtn');
-        const usernameInput = document.getElementById('usernameInput');
-        const emailInput = document.getElementById('emailInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const profileUsername = document.getElementById('profileUsername');
-        const profileStatus = document.getElementById('profileStatus');
+        const duck = document.getElementById('duck');
+        const casinoTable = document.getElementById('casinoTable');
+        const spinBtn = document.getElementById('spinBtn');
+        const slots = [
+            document.getElementById('slot1'),
+            document.getElementById('slot2'),
+            document.getElementById('slot3')
+        ];
+        const winMessage = document.getElementById('winMessage');
 
-        // App state
-        let isRegistered = localStorage.getItem('isRegistered') === 'true';
-        let currentUser = JSON.parse(localStorage.getItem('user')) || null;
-
-        // Автозаполнение данных из Telegram (если пользователь авторизован)
+        // Символы для слотов
+        const symbols = ['7', '🍒', '💰', '🦆', '🍀', '⭐'];
+        
+        // Запуск анимации уточки
+        launchBtn.addEventListener('click', () => {
+            launchBtn.style.display = 'none';
+            duck.style.opacity = '1';
+            
+            // Через 3 секунды показываем казино
+            setTimeout(() => {
+                duck.style.opacity = '0';
+                casinoTable.style.display = 'block';
+            }, 3000);
+        });
+        
+        // Вращение слотов
+        spinBtn.addEventListener('click', () => {
+            spinBtn.disabled = true;
+            winMessage.style.display = 'none';
+            
+            // Анимация вращения
+            let spins = 0;
+            const spinInterval = setInterval(() => {
+                slots.forEach(slot => {
+                    slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                });
+                
+                spins++;
+                if (spins > 20) {
+                    clearInterval(spinInterval);
+                    checkWin();
+                    spinBtn.disabled = false;
+                }
+            }, 100);
+        });
+        
+        // Проверка выигрыша
+        function checkWin() {
+            if (slots[0].textContent === slots[1].textContent && 
+                slots[1].textContent === slots[2].textContent) {
+                winMessage.style.display = 'block';
+                
+                // Отправка сообщения в Telegram при выигрыше
+                if (tg) {
+                    tg.sendData(JSON.stringify({
+                        action: 'win',
+                        combination: slots[0].textContent
+                    }));
+                }
+            }
+        }
+        
+        // Инициализация
         if (tg?.initDataUnsafe?.user) {
-            const tgUser = tg.initDataUnsafe.user;
-            usernameInput.value = tgUser.username || '';
-            emailInput.value = `${tgUser.id}@tguser.com`; // Пример email
+            document.querySelector('.logo').textContent += `\nHi, ${tg.initDataUnsafe.user.first_name || 'Player'}`;
         }
-
-        // Init
-        function init() {
-            if (isRegistered && currentUser) {
-                profileUsername.textContent = currentUser.username;
-                profileStatus.textContent = "Online";
-                registerBtnTop.style.display = 'none';
-            } else {
-                profileBtn.style.display = 'none';
-            }
-        }
-
-        // Show modal
-        function showModal(modal) {
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-            modal.style.display = 'block';
-        }
-
-        // Register
-        registerBtn.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            
-            if (!username || !email || !password) {
-                alert('Please fill all fields');
-                return;
-            }
-
-            currentUser = { username, email, password };
-            localStorage.setItem('user', JSON.stringify(currentUser));
-            localStorage.setItem('isRegistered', 'true');
-            isRegistered = true;
-            
-            profileUsername.textContent = username;
-            profileStatus.textContent = "Online";
-            registerModal.style.display = 'none';
-            profileBtn.style.display = 'block';
-            registerBtnTop.style.display = 'none';
-
-            // Отправляем данные в бота (опционально)
-            if (tg) {
-                tg.sendData(JSON.stringify({
-                    action: 'register',
-                    user: currentUser
-                }));
-            }
-        });
-
-        // Button events
-        registerBtnTop.addEventListener('click', () => showModal(registerModal));
-        profileBtn.addEventListener('click', () => showModal(profileModal));
-        downloadBtn.addEventListener('click', () => {
-            if (!isRegistered) {
-                alert('Please register first');
-                return;
-            }
-            downloadBtn.style.display = 'none';
-            launchBtn.style.display = 'block';
-        });
-
-        // Закрытие модалок по клику вне области
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-            }
-        });
-
-        // Initialize
-        init();
     </script>
 </body>
 </html>
