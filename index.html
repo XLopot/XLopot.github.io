@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSINT Graph Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0A0A0A;
+            font-family: 'Inter', sans-serif;
+            color: #FFFFFF;
+            user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+        #canvas-container:active { cursor: grabbing; }
+
+        .sidebar {
+            background-color: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .node-btn {
+            background-color: rgba(34, 34, 34, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .node-btn:hover {
+            background-color: rgba(42, 42, 42, 0.8);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .active-mode {
+            background-color: #0078D4 !important;
+            box-shadow: 0 0 15px rgba(0, 120, 212, 0.4);
+        }
+
+        .active-trash {
+            background-color: #CC0000 !important;
+            box-shadow: 0 0 15px rgba(204, 0, 0, 0.4);
+        }
+
+        #file-input { display: none; }
+        #icon-stager { position: absolute; visibility: hidden; top: -9999px; left: -9999px; }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="file-input" accept="image/*">
+    <div id="icon-stager"></div>
+
+    <div id="canvas-container">
+        <canvas id="graphCanvas"></canvas>
+    </div>
+
+    <!-- Панель управления -->
+    <div class="fixed top-6 left-6 w-[280px] sidebar rounded-2xl p-5 flex flex-col gap-4 z-50">
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-bold text-[#888] tracking-[2px] uppercase text-nowrap">Инструменты OSINT</span>
+            <i data-lucide="shield" class="w-4 h-4 text-blue-500"></i>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="addNode('PERSON')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="user" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60">ЧЕЛОВЕК</span>
+            </button>
+            <button onclick="addNode('COMPANY')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="building-2" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60">КОМПАНИЯ</span>
+            </button>
+            <button onclick="addNode('DOMAIN')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="globe" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60">ДОМЕН</span>
+            </button>
+            <button onclick="addNode('IP')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="server" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60 text-center">IP СЕРВЕР</span>
+            </button>
+            <button onclick="addNode('EMAIL')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="mail" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60">EMAIL</span>
+            </button>
+            <button onclick="addNode('PHONE')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
+                <i data-lucide="phone" class="w-6 h-6"></i>
+                <span class="text-[9px] font-bold opacity-60">ТЕЛЕФОН</span>
+            </button>
+            <button onclick="addNode('IMAGE')" class="node-btn col-span-2 h-14 rounded-xl flex items-center justify-center gap-3">
+                <i data-lucide="image" class="w-5 h-5 text-emerald-400"></i>
+                <span class="text-[9px] font-bold opacity-60">ЗАГРУЗИТЬ ФОТО</span>
+            </button>
+        </div>
+
+        <div class="h-[1px] bg-white/5 my-1"></div>
+
+        <div class="flex gap-2">
+            <button id="linkBtn" onclick="toggleMode('link')" class="flex-1 h-12 node-btn rounded-xl flex items-center justify-center gap-2 text-[11px] font-bold">
+                <i data-lucide="share-2" class="w-4 h-4"></i> СВЯЗАТЬ
+            </button>
+            <button id="trashBtn" onclick="toggleMode('trash')" class="w-12 h-12 node-btn rounded-xl flex items-center justify-center">
+                <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Статус -->
+    <div class="fixed bottom-6 right-6 flex gap-4 items-center z-50">
+        <div class="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[11px] font-medium text-white/60 tracking-wider uppercase">
+            <span id="nodeCount">0</span> УЗЛОВ <span class="mx-2 opacity-20">|</span> <span id="edgeCount">0</span> СВЯЗЕЙ
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('file-input');
+        const iconStager = document.getElementById('icon-stager');
+
+        let nodes = [];
+        let edges = [];
+        let offset = { x: 0, y: 0 };
+        let zoom = 1;
+        let isDragging = false;
+        let dragNode = null;
+        let selectedNode = null;
+        let lastMousePos = { x: 0, y: 0 };
+        let currentMode = 'select';
+        let linkSource = null;
+
+        const NODE_RADIUS = 35;
+        const THEME = {
+            bg: '#0A0A0A',
+            nodeBase: '#1A1A1A',
+            accent: '#0078D4',
+            text: '#888888',
+            grid: 'rgba(255, 255, 255, 0.03)',
+            edge: 'rgba(255, 255, 255, 0.2)'
+        };
+
+        const ICON_MAP = {
+            'PERSON': 'user', 
+            'DOMAIN': 'globe', 
+            'IP': 'server',
+            'EMAIL': 'mail', 
+            'PHONE': 'phone',
+            'COMPANY': 'building-2'
+        };
+
+        const iconCache = {};
+
+        async function preRenderIcons() {
+            if (typeof lucide === 'undefined') {
+                setTimeout(preRenderIcons, 100);
+                return;
+            }
+
+            const iconEntries = Object.entries(ICON_MAP);
+            
+            for (const [type, iconName] of iconEntries) {
+                const tempContainer = document.createElement('div');
+                const iElement = document.createElement('i');
+                iElement.setAttribute('data-lucide', iconName);
+                tempContainer.appendChild(iElement);
+                iconStager.appendChild(tempContainer);
+                
+                lucide.createIcons({
+                    nameAttr: 'data-lucide',
+                    attrs: {
+                        stroke: '#FFFFFF',
+                        'stroke-width': '2',
+                        width: '48',
+                        height: '48'
+                    }
+                });
+                
+                const svg = tempContainer.querySelector('svg');
+                if (!svg) continue;
+
+                const svgString = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                
+                const img = new Image();
+                img.src = url;
+                
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        const offscreen = document.createElement('canvas');
+                        offscreen.width = 64;
+                        offscreen.height = 64;
+                        const oCtx = offscreen.getContext('2d');
+                        oCtx.drawImage(img, 8, 8, 48, 48);
+                        iconCache[type] = offscreen;
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    };
+                    img.onerror = resolve;
+                });
+                
+                iconStager.removeChild(tempContainer);
+            }
+            draw();
+        }
+
+        window.addNode = (type) => {
+            if (type === 'IMAGE') {
+                fileInput.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = event => createNodeObject('IMAGE', file.name, event.target.result);
+                    reader.readAsDataURL(file);
+                    fileInput.value = '';
+                };
+                fileInput.click();
+            } else {
+                const val = prompt(`Введите данные для ${type}:`);
+                if (val) createNodeObject(type, val);
+            }
+        };
+
+        function createNodeObject(type, content, imgData = null) {
+            const newNode = {
+                id: Math.random().toString(36).substr(2, 9),
+                type,
+                content: content.toUpperCase(),
+                x: (window.innerWidth / 2 - offset.x) / zoom,
+                y: (window.innerHeight / 2 - offset.y) / zoom,
+                img: null,
+                scale: 0
+            };
+
+            if (imgData) {
+                const img = new Image();
+                img.src = imgData;
+                img.onload = () => { 
+                    newNode.img = img; 
+                    draw(); 
+                };
+            }
+
+            nodes.push(newNode);
+            updateUI();
+            animateNodeEntry(newNode);
+        }
+
+        function animateNodeEntry(node) {
+            let start = null;
+            const duration = 400;
+            const step = (timestamp) => {
+                if (!start) start = timestamp;
+                const progress = Math.min((timestamp - start) / duration, 1);
+                node.scale = progress < 1 ? 1.2 * progress : 1;
+                draw();
+                if (progress < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
+
+        window.toggleMode = (mode) => {
+            currentMode = currentMode === mode ? 'select' : mode;
+            linkSource = null;
+            document.getElementById('linkBtn').classList.toggle('active-mode', currentMode === 'link');
+            document.getElementById('trashBtn').classList.toggle('active-trash', currentMode === 'trash');
+            draw();
+        };
+
+        function updateUI() {
+            document.getElementById('nodeCount').innerText = nodes.length;
+            document.getElementById('edgeCount').innerText = edges.length;
+        }
+
+        function draw() {
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = THEME.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.translate(offset.x, offset.y);
+            ctx.scale(zoom, zoom);
+
+            drawGrid();
+
+            edges.forEach(edge => {
+                const from = nodes.find(n => n.id === edge.from);
+                const to = nodes.find(n => n.id === edge.to);
+                if (from && to) drawEdge(from, to);
+            });
+
+            nodes.forEach(node => {
+                const isSelected = selectedNode === node;
+                const isLinking = linkSource === node;
+                const s = node.scale || 0;
+                if (s === 0) return;
+                
+                const r = NODE_RADIUS * s;
+
+                ctx.save();
+                ctx.translate(node.x, node.y);
+
+                // Glow/Shadow effect
+                if (isSelected) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = 'rgba(255,255,255,0.4)';
+                } else {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                }
+
+                // Node background
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, Math.PI * 2);
+                const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+                grad.addColorStop(0, '#222');
+                grad.addColorStop(1, '#000');
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Node content rendering
+                if (node.type === 'IMAGE' && node.img) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r - 1, 0, Math.PI * 2);
+                    ctx.clip();
+                    
+                    const img = node.img;
+                    const iw = img.width;
+                    const ih = img.height;
+                    const diameter = r * 2;
+                    const scale = Math.max(diameter / iw, diameter / ih);
+                    const sw = iw * scale;
+                    const sh = ih * scale;
+                    
+                    ctx.drawImage(img, -sw / 2, -sh / 2, sw, sh);
+                    ctx.restore();
+                } else {
+                    const iconCanvas = iconCache[node.type];
+                    if (iconCanvas) {
+                        const iconSize = 34 * s; 
+                        ctx.drawImage(iconCanvas, -iconSize/2, -iconSize/2, iconSize, iconSize);
+                    }
+                }
+
+                // Outer Ring
+                ctx.shadowBlur = 0; 
+                ctx.strokeStyle = isLinking ? THEME.accent : (isSelected ? '#FFF' : 'rgba(255,255,255,0.2)');
+                ctx.lineWidth = (isSelected ? 3 : 2) / zoom;
+                ctx.stroke();
+
+                // Only draw label if it's NOT an image node
+                if (node.type !== 'IMAGE') {
+                    drawLabel(node, r);
+                }
+                
+                ctx.restore();
+            });
+        }
+
+        function drawEdge(n1, n2) {
+            const dx = n2.x - n1.x;
+            const dy = n2.y - n1.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < NODE_RADIUS * 2) return;
+
+            const ratioStart = (NODE_RADIUS + 5) / dist;
+            const ratioEnd = (NODE_RADIUS + 8) / dist;
+            const startX = n1.x + dx * ratioStart;
+            const startY = n1.y + dy * ratioStart;
+            const endX = n2.x - dx * ratioEnd;
+            const endY = n2.y - dy * ratioEnd;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = THEME.edge;
+            ctx.lineWidth = 1.5 / zoom;
+            ctx.stroke();
+
+            const angle = Math.atan2(dy, dx);
+            const head = 8 / zoom;
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(endX - head * Math.cos(angle - 0.4), endY - head * Math.sin(angle - 0.4));
+            ctx.lineTo(endX - head * Math.cos(angle + 0.4), endY - head * Math.sin(angle + 0.4));
+            ctx.fillStyle = THEME.edge;
+            ctx.fill();
+        }
+
+        function drawGrid() {
+            const size = 60;
+            const left = -offset.x / zoom;
+            const top = -offset.y / zoom;
+            const right = left + canvas.width / zoom;
+            const bottom = top + canvas.height / zoom;
+
+            ctx.beginPath();
+            ctx.strokeStyle = THEME.grid;
+            ctx.lineWidth = 1 / zoom;
+
+            for (let x = Math.floor(left / size) * size; x < right; x += size) {
+                ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+            }
+            for (let y = Math.floor(top / size) * size; y < bottom; y += size) {
+                ctx.moveTo(left, y); ctx.lineTo(right, y);
+            }
+            ctx.stroke();
+        }
+
+        function drawLabel(node, radius) {
+            if (!node.content) return;
+            const text = node.content.length > 22 ? node.content.substring(0, 19) + '...' : node.content;
+            ctx.font = `600 ${11/zoom}px Inter`;
+            
+            const w = ctx.measureText(text).width + 16;
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.beginPath();
+            ctx.roundRect(-w/2, radius + 12, w, 22, 6);
+            ctx.fill();
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 0, radius + 23);
+        }
+
+        canvas.onmousedown = (e) => {
+            const m = getMouse(e);
+            const hit = nodes.slice().reverse().find(n => Math.hypot(n.x - m.x, n.y - m.y) < NODE_RADIUS);
+
+            if (hit) {
+                if (currentMode === 'trash') {
+                    nodes = nodes.filter(n => n !== hit);
+                    edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
+                    updateUI();
+                } else if (currentMode === 'link') {
+                    if (!linkSource) linkSource = hit;
+                    else if (linkSource !== hit) {
+                        if (!edges.find(e => (e.from === linkSource.id && e.to === hit.id))) {
+                            edges.push({ from: linkSource.id, to: hit.id });
+                            updateUI();
+                        }
+                        linkSource = null;
+                    }
+                } else {
+                    dragNode = hit;
+                    selectedNode = hit;
+                }
+            } else {
+                isDragging = true;
+                selectedNode = null;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+            }
+            draw();
+        };
+
+        window.onmousemove = (e) => {
+            if (isDragging) {
+                offset.x += e.clientX - lastMousePos.x;
+                offset.y += e.clientY - lastMousePos.y;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+            } else if (dragNode) {
+                dragNode.x += e.movementX / zoom;
+                dragNode.y += e.movementY / zoom;
+            }
+            draw();
+        };
+
+        window.onmouseup = () => { isDragging = false; dragNode = null; draw(); };
+
+        canvas.onwheel = (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const wx = (mouseX - offset.x) / zoom;
+            const wy = (mouseY - offset.y) / zoom;
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom = Math.min(Math.max(0.1, zoom * delta), 5);
+            offset.x = mouseX - wx * zoom;
+            offset.y = mouseY - wy * zoom;
+            draw();
+        };
+
+        function getMouse(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left - offset.x) / zoom,
+                y: (e.clientY - rect.top - offset.y) / zoom
+            };
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        window.onload = async () => {
+            resize();
+            await preRenderIcons();
+            window.addEventListener('resize', resize);
+        };
+    </script>
+</body>
+</html>
