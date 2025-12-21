@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graph @swat_dla_eblanov</title>
+    <title>OSINT Graph Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -120,6 +120,10 @@
                 <i data-lucide="trash-2" class="w-5 h-5"></i>
             </button>
         </div>
+
+        <button onclick="downloadProject()" class="w-full h-12 node-btn rounded-xl flex items-center justify-center gap-3 text-[11px] font-bold text-blue-400">
+            <i data-lucide="download" class="w-4 h-4"></i> СОХРАНИТЬ КАК ФОТО
+        </button>
     </div>
 
     <!-- Статус -->
@@ -289,20 +293,25 @@
             document.getElementById('edgeCount').innerText = edges.length;
         }
 
-        function draw() {
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.fillStyle = THEME.bg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.translate(offset.x, offset.y);
-            ctx.scale(zoom, zoom);
-
-            drawGrid();
+        function draw(renderCtx = ctx, isExport = false) {
+            const currentCanvas = renderCtx.canvas;
+            
+            if (!isExport) {
+                renderCtx.setTransform(1, 0, 0, 1, 0, 0);
+                renderCtx.fillStyle = THEME.bg;
+                renderCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
+                renderCtx.translate(offset.x, offset.y);
+                renderCtx.scale(zoom, zoom);
+                drawGrid(renderCtx);
+            } else {
+                renderCtx.fillStyle = THEME.bg;
+                renderCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
+            }
 
             edges.forEach(edge => {
                 const from = nodes.find(n => n.id === edge.from);
                 const to = nodes.find(n => n.id === edge.to);
-                if (from && to) drawEdge(from, to);
+                if (from && to) drawEdge(from, to, renderCtx, isExport);
             });
 
             nodes.forEach(node => {
@@ -311,35 +320,34 @@
                 const s = node.scale || 0;
                 if (s === 0) return;
                 
-                const r = NODE_RADIUS * s;
+                const r = NODE_RADIUS * (isExport ? 1 : s);
 
-                ctx.save();
-                ctx.translate(node.x, node.y);
+                renderCtx.save();
+                renderCtx.translate(node.x, node.y);
 
-                // Glow/Shadow effect
-                if (isSelected) {
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = 'rgba(255,255,255,0.4)';
-                } else {
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                if (!isExport) {
+                    if (isSelected) {
+                        renderCtx.shadowBlur = 20;
+                        renderCtx.shadowColor = 'rgba(255,255,255,0.4)';
+                    } else {
+                        renderCtx.shadowBlur = 10;
+                        renderCtx.shadowColor = 'rgba(0,0,0,0.5)';
+                    }
                 }
 
-                // Node background
-                ctx.beginPath();
-                ctx.arc(0, 0, r, 0, Math.PI * 2);
-                const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+                renderCtx.beginPath();
+                renderCtx.arc(0, 0, r, 0, Math.PI * 2);
+                const grad = renderCtx.createRadialGradient(0, 0, 0, 0, 0, r);
                 grad.addColorStop(0, '#222');
                 grad.addColorStop(1, '#000');
-                ctx.fillStyle = grad;
-                ctx.fill();
+                renderCtx.fillStyle = grad;
+                renderCtx.fill();
 
-                // Node content rendering
                 if (node.type === 'IMAGE' && node.img) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(0, 0, r - 1, 0, Math.PI * 2);
-                    ctx.clip();
+                    renderCtx.save();
+                    renderCtx.beginPath();
+                    renderCtx.arc(0, 0, r - 1, 0, Math.PI * 2);
+                    renderCtx.clip();
                     
                     const img = node.img;
                     const iw = img.width;
@@ -349,32 +357,30 @@
                     const sw = iw * scale;
                     const sh = ih * scale;
                     
-                    ctx.drawImage(img, -sw / 2, -sh / 2, sw, sh);
-                    ctx.restore();
+                    renderCtx.drawImage(img, -sw / 2, -sh / 2, sw, sh);
+                    renderCtx.restore();
                 } else {
                     const iconCanvas = iconCache[node.type];
                     if (iconCanvas) {
-                        const iconSize = 34 * s; 
-                        ctx.drawImage(iconCanvas, -iconSize/2, -iconSize/2, iconSize, iconSize);
+                        const iconSize = 34 * (isExport ? 1 : s); 
+                        renderCtx.drawImage(iconCanvas, -iconSize/2, -iconSize/2, iconSize, iconSize);
                     }
                 }
 
-                // Outer Ring
-                ctx.shadowBlur = 0; 
-                ctx.strokeStyle = isLinking ? THEME.accent : (isSelected ? '#FFF' : 'rgba(255,255,255,0.2)');
-                ctx.lineWidth = (isSelected ? 3 : 2) / zoom;
-                ctx.stroke();
+                renderCtx.shadowBlur = 0; 
+                renderCtx.strokeStyle = isLinking ? THEME.accent : (isSelected && !isExport ? '#FFF' : 'rgba(255,255,255,0.2)');
+                renderCtx.lineWidth = (isSelected && !isExport ? 3 : 2) / (isExport ? 1 : zoom);
+                renderCtx.stroke();
 
-                // Only draw label if it's NOT an image node
                 if (node.type !== 'IMAGE') {
-                    drawLabel(node, r);
+                    drawLabel(node, r, renderCtx, isExport);
                 }
                 
-                ctx.restore();
+                renderCtx.restore();
             });
         }
 
-        function drawEdge(n1, n2) {
+        function drawEdge(n1, n2, renderCtx = ctx, isExport = false) {
             const dx = n2.x - n1.x;
             const dy = n2.y - n1.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -387,59 +393,90 @@
             const endX = n2.x - dx * ratioEnd;
             const endY = n2.y - dy * ratioEnd;
 
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.strokeStyle = THEME.edge;
-            ctx.lineWidth = 1.5 / zoom;
-            ctx.stroke();
+            renderCtx.beginPath();
+            renderCtx.moveTo(startX, startY);
+            renderCtx.lineTo(endX, endY);
+            renderCtx.strokeStyle = THEME.edge;
+            renderCtx.lineWidth = 1.5 / (isExport ? 1 : zoom);
+            renderCtx.stroke();
 
             const angle = Math.atan2(dy, dx);
-            const head = 8 / zoom;
-            ctx.beginPath();
-            ctx.moveTo(endX, endY);
-            ctx.lineTo(endX - head * Math.cos(angle - 0.4), endY - head * Math.sin(angle - 0.4));
-            ctx.lineTo(endX - head * Math.cos(angle + 0.4), endY - head * Math.sin(angle + 0.4));
-            ctx.fillStyle = THEME.edge;
-            ctx.fill();
+            const head = 8 / (isExport ? 1 : zoom);
+            renderCtx.beginPath();
+            renderCtx.moveTo(endX, endY);
+            renderCtx.lineTo(endX - head * Math.cos(angle - 0.4), endY - head * Math.sin(angle - 0.4));
+            renderCtx.lineTo(endX - head * Math.cos(angle + 0.4), endY - head * Math.sin(angle + 0.4));
+            renderCtx.fillStyle = THEME.edge;
+            renderCtx.fill();
         }
 
-        function drawGrid() {
+        function drawGrid(renderCtx = ctx) {
             const size = 60;
             const left = -offset.x / zoom;
             const top = -offset.y / zoom;
             const right = left + canvas.width / zoom;
             const bottom = top + canvas.height / zoom;
 
-            ctx.beginPath();
-            ctx.strokeStyle = THEME.grid;
-            ctx.lineWidth = 1 / zoom;
+            renderCtx.beginPath();
+            renderCtx.strokeStyle = THEME.grid;
+            renderCtx.lineWidth = 1 / zoom;
 
             for (let x = Math.floor(left / size) * size; x < right; x += size) {
-                ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+                renderCtx.moveTo(x, top); renderCtx.lineTo(x, bottom);
             }
             for (let y = Math.floor(top / size) * size; y < bottom; y += size) {
-                ctx.moveTo(left, y); ctx.lineTo(right, y);
+                renderCtx.moveTo(left, y); renderCtx.lineTo(right, y);
             }
-            ctx.stroke();
+            renderCtx.stroke();
         }
 
-        function drawLabel(node, radius) {
+        function drawLabel(node, radius, renderCtx = ctx, isExport = false) {
             if (!node.content) return;
             const text = node.content.length > 22 ? node.content.substring(0, 19) + '...' : node.content;
-            ctx.font = `600 ${11/zoom}px Inter`;
+            renderCtx.font = `600 ${11 / (isExport ? 1 : zoom)}px Inter`;
             
-            const w = ctx.measureText(text).width + 16;
-            ctx.fillStyle = 'rgba(0,0,0,0.85)';
-            ctx.beginPath();
-            ctx.roundRect(-w/2, radius + 12, w, 22, 6);
-            ctx.fill();
+            const w = renderCtx.measureText(text).width + 16;
+            renderCtx.fillStyle = 'rgba(0,0,0,0.85)';
+            renderCtx.beginPath();
+            renderCtx.roundRect(-w/2, radius + 12, w, 22, 6);
+            renderCtx.fill();
             
-            ctx.fillStyle = '#FFFFFF';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, 0, radius + 23);
+            renderCtx.fillStyle = '#FFFFFF';
+            renderCtx.textAlign = 'center';
+            renderCtx.textBaseline = 'middle';
+            renderCtx.fillText(text, 0, radius + 23);
         }
+
+        window.downloadProject = () => {
+            if (nodes.length === 0) return;
+
+            // Find bounds
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x - NODE_RADIUS - 50);
+                minY = Math.min(minY, n.y - NODE_RADIUS - 50);
+                maxX = Math.max(maxX, n.x + NODE_RADIUS + 50);
+                maxY = Math.max(maxY, n.y + NODE_RADIUS + 100);
+            });
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = width;
+            exportCanvas.height = height;
+            const eCtx = exportCanvas.getContext('2d');
+
+            eCtx.translate(-minX, -minY);
+            
+            // Draw to the export context
+            draw(eCtx, true);
+
+            const link = document.createElement('a');
+            link.download = `osint-graph-${Date.now()}.png`;
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+        };
 
         canvas.onmousedown = (e) => {
             const m = getMouse(e);
@@ -520,5 +557,4 @@
         };
     </script>
 </body>
-
 </html>
