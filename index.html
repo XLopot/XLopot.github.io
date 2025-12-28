@@ -3,133 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graph @swat_dla_eblanov</title>
+    <title>OSINT Graph | @swat_dla_eblanov</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #0A0A0A;
+            background-color: #050505;
             font-family: 'Inter', sans-serif;
             color: #FFFFFF;
             user-select: none;
         }
 
+        /* HQ Background Engine */
+        #bg-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: -2;
+            overflow: hidden;
+            background: #050505;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bg-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; 
+            object-position: center;
+            display: none;
+            transition: object-fit 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* Canvas Setup */
         #canvas-container {
+            position: relative;
             width: 100vw;
             height: 100vh;
             cursor: grab;
+            z-index: 1;
         }
         #canvas-container:active { cursor: grabbing; }
 
+        /* UI Styling */
         .sidebar {
-            background-color: rgba(26, 26, 26, 0.8);
-            backdrop-filter: blur(12px);
+            background: rgba(10, 10, 10, 0.75);
+            backdrop-filter: blur(25px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(-100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
         }
 
         .node-btn {
-            background-color: rgba(34, 34, 34, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .node-btn:hover {
-            background-color: rgba(42, 42, 42, 0.8);
-            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08);
             border-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
         }
 
-        .active-mode {
-            background-color: #0078D4 !important;
-            box-shadow: 0 0 15px rgba(0, 120, 212, 0.4);
+        .active-mode { background: #0063b1 !important; border-color: #0078d4 !important; }
+        .active-trash { background: #990000 !important; border-color: #ff4444 !important; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
         }
 
-        .active-trash {
-            background-color: #CC0000 !important;
-            box-shadow: 0 0 15px rgba(204, 0, 0, 0.4);
+        .modal-content {
+            background: #111;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 24px;
+            border-radius: 20px;
+            width: 340px;
+            box-shadow: 0 30px 60px rgba(0,0,0,1);
         }
 
-        #file-input { display: none; }
-        #icon-stager { position: absolute; visibility: hidden; top: -9999px; left: -9999px; }
+        .input-hq {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            width: 100%;
+            color: white;
+            outline: none;
+            font-size: 13px;
+            margin: 16px 0;
+        }
+        .input-hq:focus { border-color: #0078d4; box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2); }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+        }
+
+        #file-input, #bg-upload-input, #bg-video-upload-input { display: none; }
+        #icon-stager { position: absolute; visibility: hidden; pointer-events: none; }
     </style>
 </head>
 <body>
 
+    <div id="bg-container">
+        <div id="default-bg" class="bg-layer" style="display: block; background: radial-gradient(circle at center, #0a0a0a 0%, #050505 100%);"></div>
+        <img id="image-bg" class="bg-layer" src="" alt="HQ Background">
+        <video id="video-bg" class="bg-layer" loop muted playsinline disablePictureInPicture>
+            <source src="" type="video/mp4">
+        </video>
+    </div>
+
+    <!-- Модалка узла -->
+    <div id="nodeModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitle" class="text-[10px] font-bold uppercase tracking-widest text-blue-400">Объект</h3>
+            <input type="text" id="modalInput" class="input-hq" placeholder="Введите данные...">
+            <div class="flex gap-2">
+                <button onclick="closeModal('nodeModal')" class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase tracking-wider">Отмена</button>
+                <button id="modalConfirm" class="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-[10px] font-bold uppercase tracking-wider">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка Фона с настройками разрешения/масштаба -->
+    <div id="bgModal" class="modal-overlay">
+        <div class="modal-content w-[400px]">
+            <h3 class="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-4">Медиатека и Масштаб</h3>
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button onclick="document.getElementById('bg-upload-input').click()" class="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 flex flex-col items-center gap-2 group transition">
+                    <i data-lucide="image" class="w-6 h-6 text-blue-400 group-hover:scale-110 transition"></i>
+                    <span class="text-[9px] font-bold uppercase tracking-tight">Фото / GIF</span>
+                </button>
+                <button onclick="document.getElementById('bg-video-upload-input').click()" class="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 flex flex-col items-center gap-2 group transition">
+                    <i data-lucide="clapperboard" class="w-6 h-6 text-purple-400 group-hover:scale-110 transition"></i>
+                    <span class="text-[9px] font-bold uppercase tracking-tight">Видео-файл</span>
+                </button>
+            </div>
+
+            <!-- Resolution / Fitting Settings -->
+            <div class="bg-white/5 p-4 rounded-xl border border-white/10 mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-[9px] font-bold text-white/40 uppercase tracking-widest">Масштабирование</span>
+                    <span id="fit-label" class="text-[9px] font-bold text-blue-400 uppercase">Cover</span>
+                </div>
+                <div class="flex gap-1.5">
+                    <button onclick="updateBgFitting('cover')" class="flex-1 py-1.5 rounded-md bg-white/5 text-[8px] font-bold border border-white/5 hover:border-white/20 uppercase">Заполнить</button>
+                    <button onclick="updateBgFitting('contain')" class="flex-1 py-1.5 rounded-md bg-white/5 text-[8px] font-bold border border-white/5 hover:border-white/20 uppercase">Вписать</button>
+                    <button onclick="updateBgFitting('fill')" class="flex-1 py-1.5 rounded-md bg-white/5 text-[8px] font-bold border border-white/5 hover:border-white/20 uppercase">Растянуть</button>
+                </div>
+
+                <div class="mt-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[9px] font-bold text-white/40 uppercase tracking-widest">Яркость</span>
+                        <span id="opacity-val" class="text-[9px] font-bold text-blue-400">100%</span>
+                    </div>
+                    <input type="range" id="bg-opacity" min="0" max="1" step="0.01" value="1" class="w-full cursor-pointer" oninput="updateBgOpacity(this.value)">
+                </div>
+            </div>
+
+            <div class="bg-white/5 p-3 rounded-xl border border-white/10 mb-4">
+                <span class="text-[9px] font-bold text-white/40 uppercase tracking-widest">Прямая ссылка</span>
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="bg-url-input" placeholder="URL (mp4, jpg)" class="input-hq m-0 flex-1 py-1.5 text-xs">
+                    <button onclick="applyUrlBackground()" class="px-3 bg-blue-600 rounded-lg hover:bg-blue-500">
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="resetBackground()" class="flex-1 py-2.5 rounded-lg bg-red-900/10 text-red-500 border border-red-900/20 hover:bg-red-900/20 text-[9px] font-bold uppercase">Сброс</button>
+                <button onclick="closeModal('bgModal')" class="flex-1 py-2.5 rounded-lg bg-white/5 text-white/50 hover:bg-white/10 text-[9px] font-bold uppercase">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <input type="file" id="file-input" accept="image/*">
+    <input type="file" id="bg-upload-input" accept="image/*,image/gif">
+    <input type="file" id="bg-video-upload-input" accept="video/mp4,video/webm">
     <div id="icon-stager"></div>
 
     <div id="canvas-container">
         <canvas id="graphCanvas"></canvas>
     </div>
 
-    <!-- Панель управления -->
-    <div class="fixed top-6 left-6 w-[280px] sidebar rounded-2xl p-5 flex flex-col gap-4 z-50">
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-[10px] font-bold text-[#888] tracking-[2px] uppercase text-nowrap">Инструменты OSINT</span>
-            <i data-lucide="shield" class="w-4 h-4 text-blue-500"></i>
+    <!-- UI Panel -->
+    <div class="fixed top-6 left-6 w-[240px] sidebar rounded-[24px] p-5 flex flex-col gap-4 z-50">
+        <div class="flex items-center justify-between mb-1">
+            <div>
+                <h1 class="text-xs font-black text-white tracking-wider uppercase">OSINT Engine</h1>
+                <p class="text-[8px] font-bold text-blue-500 uppercase tracking-[2px] opacity-60">High-Res</p>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i>
+            </div>
         </div>
         
         <div class="grid grid-cols-2 gap-2">
-            <button onclick="addNode('PERSON')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="user" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60">ЧЕЛОВЕК</span>
+            <button onclick="promptNode('PERSON')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="user-search" class="w-4 h-4 text-blue-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">Личность</span>
             </button>
-            <button onclick="addNode('COMPANY')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="building-2" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60">КОМПАНИЯ</span>
+            <button onclick="promptNode('COMPANY')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="briefcase" class="w-4 h-4 text-amber-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">Компания</span>
             </button>
-            <button onclick="addNode('DOMAIN')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="globe" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60">ДОМЕН</span>
+            <button onclick="promptNode('DOMAIN')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="globe" class="w-4 h-4 text-indigo-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">Домен</span>
             </button>
-            <button onclick="addNode('IP')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="server" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60 text-center">IP СЕРВЕР</span>
+            <button onclick="promptNode('IP')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="network" class="w-4 h-4 text-rose-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">IP Адрес</span>
             </button>
-            <button onclick="addNode('EMAIL')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="mail" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60">EMAIL</span>
+            <!-- NEW BUTTONS -->
+            <button onclick="promptNode('PHONE')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="phone" class="w-4 h-4 text-emerald-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">Телефон</span>
             </button>
-            <button onclick="addNode('PHONE')" class="node-btn h-20 rounded-xl flex flex-col items-center justify-center gap-2">
-                <i data-lucide="phone" class="w-6 h-6"></i>
-                <span class="text-[9px] font-bold opacity-60">ТЕЛЕФОН</span>
+            <button onclick="promptNode('CITY')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
+                <i data-lucide="map-pin" class="w-4 h-4 text-orange-400"></i>
+                <span class="text-[7px] font-bold opacity-50 uppercase">Город</span>
             </button>
-            <button onclick="addNode('IMAGE')" class="node-btn col-span-2 h-14 rounded-xl flex items-center justify-center gap-3">
-                <i data-lucide="image" class="w-5 h-5 text-emerald-400"></i>
-                <span class="text-[9px] font-bold opacity-60">ЗАГРУЗИТЬ ФОТО</span>
+            
+            <button onclick="addNode('IMAGE')" class="node-btn col-span-2 h-10 rounded-xl flex items-center justify-center gap-2">
+                <i data-lucide="camera" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span class="text-[8px] font-bold opacity-80 uppercase tracking-widest">Прикрепить фото</span>
             </button>
         </div>
 
-        <div class="h-[1px] bg-white/5 my-1"></div>
+        <div class="h-[1px] bg-white/5"></div>
+
+        <button onclick="openModal('bgModal')" class="w-full h-10 node-btn rounded-xl flex items-center justify-between px-4 group">
+            <div class="flex items-center gap-3">
+                <div class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                    <i data-lucide="settings-2" class="w-3.5 h-3.5 text-emerald-500"></i>
+                </div>
+                <span class="text-[9px] font-bold uppercase tracking-widest opacity-80">Настройки Фона</span>
+            </div>
+            <i data-lucide="chevron-right" class="w-3 h-3 opacity-20 group-hover:translate-x-1 transition"></i>
+        </button>
 
         <div class="flex gap-2">
-            <button id="linkBtn" onclick="toggleMode('link')" class="flex-1 h-12 node-btn rounded-xl flex items-center justify-center gap-2 text-[11px] font-bold">
-                <i data-lucide="share-2" class="w-4 h-4"></i> СВЯЗАТЬ
+            <button id="linkBtn" onclick="toggleMode('link')" class="flex-1 h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-blue-400"></i> СВЯЗЬ
             </button>
-            <button id="trashBtn" onclick="toggleMode('trash')" class="w-12 h-12 node-btn rounded-xl flex items-center justify-center">
-                <i data-lucide="trash-2" class="w-5 h-5"></i>
+            <button id="trashBtn" onclick="toggleMode('trash')" class="w-10 h-10 node-btn rounded-xl flex items-center justify-center">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i>
             </button>
         </div>
 
-        <button onclick="downloadProject()" class="w-full h-12 node-btn rounded-xl flex items-center justify-center gap-3 text-[11px] font-bold text-blue-400">
-            <i data-lucide="download" class="w-4 h-4"></i> СОХРАНИТЬ КАК ФОТО
+        <button onclick="downloadProject()" class="w-full h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold text-blue-400 border-blue-900/30 bg-blue-500/10 hover:bg-blue-500/20">
+            <i data-lucide="save" class="w-3.5 h-3.5"></i> СОХРАНИТЬ (PNG)
         </button>
     </div>
 
-    <!-- Статус -->
-    <div class="fixed bottom-6 right-6 flex gap-4 items-center z-50">
-        <div class="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[11px] font-medium text-white/60 tracking-wider uppercase">
-            <span id="nodeCount">0</span> УЗЛОВ <span class="mx-2 opacity-20">|</span> <span id="edgeCount">0</span> СВЯЗЕЙ
+    <!-- Stats -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <div class="bg-black/40 backdrop-blur-xl border border-white/10 px-5 py-3 rounded-2xl flex gap-5 items-center shadow-2xl">
+            <div class="flex flex-col">
+                <span id="nodeCount" class="text-sm font-bold text-white">0</span>
+                <span class="text-[7px] font-black uppercase text-blue-500 tracking-wider">Узлов</span>
+            </div>
+            <div class="w-[1px] h-4 bg-white/10"></div>
+            <div class="flex flex-col">
+                <span id="edgeCount" class="text-sm font-bold text-white">0</span>
+                <span class="text-[7px] font-black uppercase text-blue-500 tracking-wider">Связей</span>
+            </div>
         </div>
     </div>
 
@@ -137,7 +302,16 @@
         const canvas = document.getElementById('graphCanvas');
         const ctx = canvas.getContext('2d');
         const fileInput = document.getElementById('file-input');
+        const bgUploadInput = document.getElementById('bg-upload-input');
+        const bgVideoUploadInput = document.getElementById('bg-video-upload-input');
+        const bgUrlInput = document.getElementById('bg-url-input');
         const iconStager = document.getElementById('icon-stager');
+
+        const layers = {
+            default: document.getElementById('default-bg'),
+            image: document.getElementById('image-bg'),
+            video: document.getElementById('video-bg')
+        };
 
         let nodes = [];
         let edges = [];
@@ -150,77 +324,165 @@
         let currentMode = 'select';
         let linkSource = null;
 
-        const NODE_RADIUS = 35;
+        const NODE_RADIUS = 36;
         const THEME = {
-            bg: '#0A0A0A',
-            nodeBase: '#1A1A1A',
-            accent: '#0078D4',
-            text: '#888888',
-            grid: 'rgba(255, 255, 255, 0.03)',
-            edge: 'rgba(255, 255, 255, 0.2)'
+            edge: 'rgba(255, 255, 255, 0.2)',
+            grid: 'rgba(255, 255, 255, 0.05)',
+            text: '#FFFFFF'
         };
 
         const ICON_MAP = {
-            'PERSON': 'user', 
+            'PERSON': 'user-search', 
+            'COMPANY': 'briefcase',
             'DOMAIN': 'globe', 
-            'IP': 'server',
-            'EMAIL': 'mail', 
+            'IP': 'network',
             'PHONE': 'phone',
-            'COMPANY': 'building-2'
+            'CITY': 'map-pin'
         };
 
         const iconCache = {};
 
-        async function preRenderIcons() {
-            if (typeof lucide === 'undefined') {
-                setTimeout(preRenderIcons, 100);
-                return;
-            }
+        // --- Modals Logic ---
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-            const iconEntries = Object.entries(ICON_MAP);
-            
-            for (const [type, iconName] of iconEntries) {
-                const tempContainer = document.createElement('div');
-                const iElement = document.createElement('i');
-                iElement.setAttribute('data-lucide', iconName);
-                tempContainer.appendChild(iElement);
-                iconStager.appendChild(tempContainer);
-                
+        function promptNode(type) {
+            const modal = document.getElementById('nodeModal');
+            const title = document.getElementById('modalTitle');
+            const input = document.getElementById('modalInput');
+            const confirm = document.getElementById('modalConfirm');
+
+            title.innerText = `Добавить: ${type}`;
+            input.value = '';
+            openModal('nodeModal');
+            setTimeout(() => input.focus(), 50);
+
+            const handleConfirm = () => {
+                if (input.value.trim()) {
+                    createNodeObject(type, input.value.trim());
+                    closeModal('nodeModal');
+                }
+                confirm.onclick = null;
+            };
+
+            confirm.onclick = handleConfirm;
+            input.onkeydown = (e) => { if(e.key === 'Enter') handleConfirm(); };
+        }
+
+        // --- HQ Background & Resolution Fitting Logic ---
+        function updateBgFitting(mode) {
+            layers.image.style.objectFit = mode;
+            layers.video.style.objectFit = mode;
+            document.getElementById('fit-label').innerText = mode.charAt(0).toUpperCase() + mode.slice(1);
+        }
+
+        function updateBgOpacity(val) {
+            layers.image.style.opacity = val;
+            layers.video.style.opacity = val;
+            document.getElementById('opacity-val').innerText = Math.round(val * 100) + '%';
+        }
+
+        function setBgLayer(activeType) {
+            Object.keys(layers).forEach(key => {
+                if (key === activeType) {
+                    layers[key].style.display = 'block';
+                } else {
+                    layers[key].style.display = 'none';
+                    if (key === 'video') layers[key].pause();
+                }
+            });
+            draw();
+        }
+
+        function resetBackground() {
+            setBgLayer('default');
+            bgUrlInput.value = '';
+            updateBgFitting('cover');
+            updateBgOpacity(1);
+            document.getElementById('bg-opacity').value = 1;
+            closeModal('bgModal');
+        }
+
+        bgUploadInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                layers.image.onload = () => {
+                    setBgLayer('image');
+                    closeModal('bgModal');
+                };
+                layers.image.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        bgVideoUploadInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            layers.video.onloadedmetadata = () => {
+                setBgLayer('video');
+                layers.video.play().catch(() => {});
+                closeModal('bgModal');
+            };
+            layers.video.src = url;
+        };
+
+        function applyUrlBackground() {
+            const url = bgUrlInput.value.trim();
+            if (!url) return;
+            const ext = url.split('.').pop().toLowerCase().split(/[?#]/)[0];
+            const videoExts = ['mp4', 'webm', 'ogg', 'mov'];
+
+            if (videoExts.includes(ext)) {
+                layers.video.src = url;
+                layers.video.onloadedmetadata = () => {
+                    setBgLayer('video');
+                    layers.video.play().catch(e => console.warn("Video block:", e));
+                    closeModal('bgModal');
+                };
+            } else {
+                layers.image.src = url;
+                layers.image.onload = () => {
+                    setBgLayer('image');
+                    closeModal('bgModal');
+                };
+            }
+        }
+
+        // --- Core Graph Engine ---
+        async function preRenderIcons() {
+            if (typeof lucide === 'undefined') return setTimeout(preRenderIcons, 100);
+            for (const [type, iconName] of Object.entries(ICON_MAP)) {
+                const temp = document.createElement('div');
+                const i = document.createElement('i');
+                i.setAttribute('data-lucide', iconName);
+                temp.appendChild(i);
+                iconStager.appendChild(temp);
                 lucide.createIcons({
                     nameAttr: 'data-lucide',
-                    attrs: {
-                        stroke: '#FFFFFF',
-                        'stroke-width': '2',
-                        width: '48',
-                        height: '48'
-                    }
+                    attrs: { stroke: '#FFFFFF', 'stroke-width': '2.5', width: '48', height: '48' }
                 });
-                
-                const svg = tempContainer.querySelector('svg');
+                const svg = temp.querySelector('svg');
                 if (!svg) continue;
-
                 const svgString = new XMLSerializer().serializeToString(svg);
                 const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
-                
                 const img = new Image();
                 img.src = url;
-                
-                await new Promise((resolve) => {
+                await new Promise(r => {
                     img.onload = () => {
-                        const offscreen = document.createElement('canvas');
-                        offscreen.width = 64;
-                        offscreen.height = 64;
-                        const oCtx = offscreen.getContext('2d');
+                        const off = document.createElement('canvas');
+                        off.width = 64; off.height = 64;
+                        const oCtx = off.getContext('2d');
                         oCtx.drawImage(img, 8, 8, 48, 48);
-                        iconCache[type] = offscreen;
+                        iconCache[type] = off;
                         URL.revokeObjectURL(url);
-                        resolve();
+                        r();
                     };
-                    img.onerror = resolve;
                 });
-                
-                iconStager.removeChild(tempContainer);
+                iconStager.removeChild(temp);
             }
             draw();
         }
@@ -231,14 +493,10 @@
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = event => createNodeObject('IMAGE', file.name, event.target.result);
+                    reader.onload = ev => createNodeObject('IMAGE', file.name, ev.target.result);
                     reader.readAsDataURL(file);
-                    fileInput.value = '';
                 };
                 fileInput.click();
-            } else {
-                const val = prompt(`Введите данные для ${type}:`);
-                if (val) createNodeObject(type, val);
             }
         };
 
@@ -252,16 +510,11 @@
                 img: null,
                 scale: 0
             };
-
             if (imgData) {
                 const img = new Image();
                 img.src = imgData;
-                img.onload = () => { 
-                    newNode.img = img; 
-                    draw(); 
-                };
+                img.onload = () => { newNode.img = img; draw(); };
             }
-
             nodes.push(newNode);
             updateUI();
             animateNodeEntry(newNode);
@@ -269,13 +522,12 @@
 
         function animateNodeEntry(node) {
             let start = null;
-            const duration = 400;
-            const step = (timestamp) => {
-                if (!start) start = timestamp;
-                const progress = Math.min((timestamp - start) / duration, 1);
-                node.scale = progress < 1 ? 1.2 * progress : 1;
+            const step = (t) => {
+                if (!start) start = t;
+                const p = Math.min((t - start) / 400, 1);
+                node.scale = p < 1 ? 1.15 * p : 1;
                 draw();
-                if (progress < 1) requestAnimationFrame(step);
+                if (p < 1) requestAnimationFrame(step);
             };
             requestAnimationFrame(step);
         }
@@ -294,194 +546,169 @@
         }
 
         function draw(renderCtx = ctx, isExport = false) {
-            const currentCanvas = renderCtx.canvas;
+            const c = renderCtx.canvas;
+            renderCtx.setTransform(1, 0, 0, 1, 0, 0);
             
-            if (!isExport) {
-                renderCtx.setTransform(1, 0, 0, 1, 0, 0);
-                renderCtx.fillStyle = THEME.bg;
-                renderCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
+            if (isExport) {
+                // Background export logic
+                if (layers.default.style.display !== 'none') {
+                    renderCtx.fillStyle = '#050505';
+                    renderCtx.fillRect(0, 0, c.width, c.height);
+                } else if (layers.image.style.display !== 'none' && layers.image.complete) {
+                    const iw = layers.image.naturalWidth;
+                    const ih = layers.image.naturalHeight;
+                    const mode = layers.image.style.objectFit || 'cover';
+                    
+                    renderCtx.fillStyle = '#000';
+                    renderCtx.fillRect(0, 0, c.width, c.height);
+                    renderCtx.globalAlpha = parseFloat(layers.image.style.opacity) || 1;
+
+                    let dw, dh, dx, dy;
+                    if (mode === 'cover') {
+                        const sc = Math.max(c.width / iw, c.height / ih);
+                        dw = iw * sc; dh = ih * sc;
+                    } else if (mode === 'contain') {
+                        const sc = Math.min(c.width / iw, c.height / ih);
+                        dw = iw * sc; dh = ih * sc;
+                    } else { // fill
+                        dw = c.width; dh = c.height;
+                    }
+                    dx = (c.width - dw) / 2;
+                    dy = (c.height - dh) / 2;
+                    renderCtx.drawImage(layers.image, dx, dy, dw, dh);
+                    renderCtx.globalAlpha = 1;
+                }
+            } else {
+                renderCtx.clearRect(0, 0, c.width, c.height);
                 renderCtx.translate(offset.x, offset.y);
                 renderCtx.scale(zoom, zoom);
                 drawGrid(renderCtx);
-            } else {
-                renderCtx.fillStyle = THEME.bg;
-                renderCtx.fillRect(0, 0, currentCanvas.width, currentCanvas.height);
             }
 
-            edges.forEach(edge => {
-                const from = nodes.find(n => n.id === edge.from);
-                const to = nodes.find(n => n.id === edge.to);
-                if (from && to) drawEdge(from, to, renderCtx, isExport);
+            edges.forEach(e => {
+                const f = nodes.find(n => n.id === e.from);
+                const t = nodes.find(n => n.id === e.to);
+                if (f && t) drawEdge(f, t, renderCtx, isExport);
             });
 
-            nodes.forEach(node => {
-                const isSelected = selectedNode === node;
-                const isLinking = linkSource === node;
-                const s = node.scale || 0;
+            nodes.forEach(n => {
+                const s = n.scale || 0;
                 if (s === 0) return;
-                
                 const r = NODE_RADIUS * (isExport ? 1 : s);
-
                 renderCtx.save();
-                renderCtx.translate(node.x, node.y);
-
+                renderCtx.translate(n.x, n.y);
+                
                 if (!isExport) {
-                    if (isSelected) {
-                        renderCtx.shadowBlur = 20;
-                        renderCtx.shadowColor = 'rgba(255,255,255,0.4)';
-                    } else {
-                        renderCtx.shadowBlur = 10;
-                        renderCtx.shadowColor = 'rgba(0,0,0,0.5)';
-                    }
+                    renderCtx.shadowBlur = selectedNode === n ? 30 : 12;
+                    renderCtx.shadowColor = selectedNode === n ? 'rgba(0,120,212,0.6)' : 'rgba(0,0,0,0.4)';
                 }
 
                 renderCtx.beginPath();
                 renderCtx.arc(0, 0, r, 0, Math.PI * 2);
                 const grad = renderCtx.createRadialGradient(0, 0, 0, 0, 0, r);
-                grad.addColorStop(0, '#222');
-                grad.addColorStop(1, '#000');
+                grad.addColorStop(0, '#1a1a1a');
+                grad.addColorStop(1, '#000000');
                 renderCtx.fillStyle = grad;
                 renderCtx.fill();
 
-                if (node.type === 'IMAGE' && node.img) {
+                if (n.type === 'IMAGE' && n.img) {
                     renderCtx.save();
                     renderCtx.beginPath();
-                    renderCtx.arc(0, 0, r - 1, 0, Math.PI * 2);
+                    renderCtx.arc(0, 0, r - 1.5, 0, Math.PI * 2);
                     renderCtx.clip();
-                    
-                    const img = node.img;
-                    const iw = img.width;
-                    const ih = img.height;
-                    const diameter = r * 2;
-                    const scale = Math.max(diameter / iw, diameter / ih);
-                    const sw = iw * scale;
-                    const sh = ih * scale;
-                    
-                    renderCtx.drawImage(img, -sw / 2, -sh / 2, sw, sh);
+                    const iw = n.img.width, ih = n.img.height;
+                    const sc = Math.max((r*2)/iw, (r*2)/ih);
+                    renderCtx.drawImage(n.img, -iw*sc/2, -ih*sc/2, iw*sc, ih*sc);
                     renderCtx.restore();
                 } else {
-                    const iconCanvas = iconCache[node.type];
-                    if (iconCanvas) {
-                        const iconSize = 34 * (isExport ? 1 : s); 
-                        renderCtx.drawImage(iconCanvas, -iconSize/2, -iconSize/2, iconSize, iconSize);
+                    const icon = iconCache[n.type];
+                    if (icon) {
+                        const is = 32 * (isExport ? 1 : s);
+                        renderCtx.drawImage(icon, -is/2, -is/2, is, is);
                     }
                 }
 
-                renderCtx.shadowBlur = 0; 
-                renderCtx.strokeStyle = isLinking ? THEME.accent : (isSelected && !isExport ? '#FFF' : 'rgba(255,255,255,0.2)');
-                renderCtx.lineWidth = (isSelected && !isExport ? 3 : 2) / (isExport ? 1 : zoom);
+                renderCtx.shadowBlur = 0;
+                renderCtx.strokeStyle = (linkSource === n) ? '#0078D4' : (selectedNode === n && !isExport ? '#FFF' : 'rgba(255,255,255,0.1)');
+                renderCtx.lineWidth = (selectedNode === n ? 3 : 1.5) / (isExport ? 1 : zoom);
                 renderCtx.stroke();
-
-                if (node.type !== 'IMAGE') {
-                    drawLabel(node, r, renderCtx, isExport);
-                }
                 
+                if (n.type !== 'IMAGE') drawLabel(n, r, renderCtx, isExport);
                 renderCtx.restore();
             });
         }
 
-        function drawEdge(n1, n2, renderCtx = ctx, isExport = false) {
-            const dx = n2.x - n1.x;
-            const dy = n2.y - n1.y;
+        function drawEdge(n1, n2, rCtx, isExp) {
+            const dx = n2.x - n1.x, dy = n2.y - n1.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < NODE_RADIUS * 2) return;
+            const rs = (NODE_RADIUS + 5)/dist, re = (NODE_RADIUS + 15)/dist;
+            
+            rCtx.beginPath();
+            rCtx.moveTo(n1.x + dx*rs, n1.y + dy*rs);
+            rCtx.lineTo(n2.x - dx*re, n2.y - dy*re);
+            rCtx.strokeStyle = THEME.edge;
+            rCtx.lineWidth = 1.2 / (isExp ? 1 : zoom);
+            rCtx.setLineDash([5 / (isExp ? 1 : zoom), 3 / (isExp ? 1 : zoom)]);
+            rCtx.stroke();
+            rCtx.setLineDash([]);
 
-            const ratioStart = (NODE_RADIUS + 5) / dist;
-            const ratioEnd = (NODE_RADIUS + 8) / dist;
-            const startX = n1.x + dx * ratioStart;
-            const startY = n1.y + dy * ratioStart;
-            const endX = n2.x - dx * ratioEnd;
-            const endY = n2.y - dy * ratioEnd;
-
-            renderCtx.beginPath();
-            renderCtx.moveTo(startX, startY);
-            renderCtx.lineTo(endX, endY);
-            renderCtx.strokeStyle = THEME.edge;
-            renderCtx.lineWidth = 1.5 / (isExport ? 1 : zoom);
-            renderCtx.stroke();
-
-            const angle = Math.atan2(dy, dx);
-            const head = 8 / (isExport ? 1 : zoom);
-            renderCtx.beginPath();
-            renderCtx.moveTo(endX, endY);
-            renderCtx.lineTo(endX - head * Math.cos(angle - 0.4), endY - head * Math.sin(angle - 0.4));
-            renderCtx.lineTo(endX - head * Math.cos(angle + 0.4), endY - head * Math.sin(angle + 0.4));
-            renderCtx.fillStyle = THEME.edge;
-            renderCtx.fill();
+            const angle = Math.atan2(dy, dx), head = 8 / (isExp ? 1 : zoom);
+            rCtx.beginPath();
+            rCtx.moveTo(n2.x - dx*re, n2.y - dy*re);
+            rCtx.lineTo(n2.x - dx*re - head * Math.cos(angle - 0.4), n2.y - dy*re - head * Math.sin(angle - 0.4));
+            rCtx.lineTo(n2.x - dx*re - head * Math.cos(angle + 0.4), n2.y - dy*re - head * Math.sin(angle + 0.4));
+            rCtx.fillStyle = THEME.edge;
+            rCtx.fill();
         }
 
-        function drawGrid(renderCtx = ctx) {
+        function drawGrid(rCtx) {
             const size = 60;
-            const left = -offset.x / zoom;
-            const top = -offset.y / zoom;
-            const right = left + canvas.width / zoom;
-            const bottom = top + canvas.height / zoom;
-
-            renderCtx.beginPath();
-            renderCtx.strokeStyle = THEME.grid;
-            renderCtx.lineWidth = 1 / zoom;
-
-            for (let x = Math.floor(left / size) * size; x < right; x += size) {
-                renderCtx.moveTo(x, top); renderCtx.lineTo(x, bottom);
-            }
-            for (let y = Math.floor(top / size) * size; y < bottom; y += size) {
-                renderCtx.moveTo(left, y); renderCtx.lineTo(right, y);
-            }
-            renderCtx.stroke();
+            const l = -offset.x/zoom, t = -offset.y/zoom;
+            const r = l + canvas.width/zoom, b = t + canvas.height/zoom;
+            rCtx.beginPath();
+            rCtx.strokeStyle = THEME.grid;
+            rCtx.lineWidth = 1/zoom;
+            for (let x = Math.floor(l/size)*size; x < r; x += size) { rCtx.moveTo(x, t); rCtx.lineTo(x, b); }
+            for (let y = Math.floor(t/size)*size; y < b; y += size) { rCtx.moveTo(l, y); rCtx.lineTo(r, y); }
+            rCtx.stroke();
         }
 
-        function drawLabel(node, radius, renderCtx = ctx, isExport = false) {
-            if (!node.content) return;
-            const text = node.content.length > 22 ? node.content.substring(0, 19) + '...' : node.content;
-            renderCtx.font = `600 ${11 / (isExport ? 1 : zoom)}px Inter`;
-            
-            const w = renderCtx.measureText(text).width + 16;
-            renderCtx.fillStyle = 'rgba(0,0,0,0.85)';
-            renderCtx.beginPath();
-            renderCtx.roundRect(-w/2, radius + 12, w, 22, 6);
-            renderCtx.fill();
-            
-            renderCtx.fillStyle = '#FFFFFF';
-            renderCtx.textAlign = 'center';
-            renderCtx.textBaseline = 'middle';
-            renderCtx.fillText(text, 0, radius + 23);
+        function drawLabel(n, radius, rCtx, isExp) {
+            if (!n.content) return;
+            const text = n.content.length > 20 ? n.content.substring(0, 17) + '...' : n.content;
+            rCtx.font = `600 ${10 / (isExp ? 1 : zoom)}px Inter`;
+            const w = rCtx.measureText(text).width + 16;
+            rCtx.fillStyle = 'rgba(0,0,0,0.85)';
+            rCtx.beginPath(); rCtx.roundRect(-w/2, radius + 12, w, 20, 6); rCtx.fill();
+            rCtx.strokeStyle = 'rgba(255,255,255,0.06)'; rCtx.stroke();
+            rCtx.fillStyle = '#FFFFFF'; rCtx.textAlign = 'center'; rCtx.textBaseline = 'middle';
+            rCtx.fillText(text, 0, radius + 22);
         }
 
         window.downloadProject = () => {
-            if (nodes.length === 0) return;
-
-            // Find bounds
+            if (!nodes.length) return;
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
             nodes.forEach(n => {
-                minX = Math.min(minX, n.x - NODE_RADIUS - 50);
-                minY = Math.min(minY, n.y - NODE_RADIUS - 50);
-                maxX = Math.max(maxX, n.x + NODE_RADIUS + 50);
-                maxY = Math.max(maxY, n.y + NODE_RADIUS + 100);
+                minX = Math.min(minX, n.x - 150); minY = Math.min(minY, n.y - 150);
+                maxX = Math.max(maxX, n.x + 150); maxY = Math.max(maxY, n.y + 200);
             });
-
-            const width = maxX - minX;
-            const height = maxY - minY;
-
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = width;
-            exportCanvas.height = height;
-            const eCtx = exportCanvas.getContext('2d');
-
+            const dpr = 2;
+            const exp = document.createElement('canvas');
+            exp.width = (maxX - minX) * dpr; exp.height = (maxY - minY) * dpr;
+            const eCtx = exp.getContext('2d');
+            eCtx.scale(dpr, dpr);
             eCtx.translate(-minX, -minY);
-            
-            // Draw to the export context
             draw(eCtx, true);
-
             const link = document.createElement('a');
-            link.download = `osint-graph-${Date.now()}.png`;
-            link.href = exportCanvas.toDataURL('image/png');
+            link.download = `osint-map-${Date.now()}.png`;
+            link.href = exp.toDataURL('image/png', 1.0);
             link.click();
         };
 
         canvas.onmousedown = (e) => {
             const m = getMouse(e);
             const hit = nodes.slice().reverse().find(n => Math.hypot(n.x - m.x, n.y - m.y) < NODE_RADIUS);
-
             if (hit) {
                 if (currentMode === 'trash') {
                     nodes = nodes.filter(n => n !== hit);
@@ -490,32 +717,21 @@
                 } else if (currentMode === 'link') {
                     if (!linkSource) linkSource = hit;
                     else if (linkSource !== hit) {
-                        if (!edges.find(e => (e.from === linkSource.id && e.to === hit.id))) {
-                            edges.push({ from: linkSource.id, to: hit.id });
-                            updateUI();
-                        }
-                        linkSource = null;
+                        if (!edges.find(x => (x.from === linkSource.id && x.to === hit.id) || (x.from === hit.id && x.to === linkSource.id))) 
+                            edges.push({from: linkSource.id, to: hit.id});
+                        linkSource = null; updateUI();
                     }
-                } else {
-                    dragNode = hit;
-                    selectedNode = hit;
-                }
-            } else {
-                isDragging = true;
-                selectedNode = null;
-                lastMousePos = { x: e.clientX, y: e.clientY };
-            }
+                } else { dragNode = hit; selectedNode = hit; }
+            } else { isDragging = true; selectedNode = null; lastMousePos = {x: e.clientX, y: e.clientY}; }
             draw();
         };
 
         window.onmousemove = (e) => {
             if (isDragging) {
-                offset.x += e.clientX - lastMousePos.x;
-                offset.y += e.clientY - lastMousePos.y;
-                lastMousePos = { x: e.clientX, y: e.clientY };
+                offset.x += e.clientX - lastMousePos.x; offset.y += e.clientY - lastMousePos.y;
+                lastMousePos = {x: e.clientX, y: e.clientY};
             } else if (dragNode) {
-                dragNode.x += e.movementX / zoom;
-                dragNode.y += e.movementY / zoom;
+                dragNode.x += e.movementX/zoom; dragNode.y += e.movementY/zoom;
             }
             draw();
         };
@@ -524,38 +740,36 @@
 
         canvas.onwheel = (e) => {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            const wx = (mouseX - offset.x) / zoom;
-            const wy = (mouseY - offset.y) / zoom;
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            zoom = Math.min(Math.max(0.1, zoom * delta), 5);
-            offset.x = mouseX - wx * zoom;
-            offset.y = mouseY - wy * zoom;
+            const r = canvas.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const wx = (mx - offset.x)/zoom, wy = (my - offset.y)/zoom;
+            const d = e.deltaY > 0 ? 0.85 : 1.15;
+            zoom = Math.min(Math.max(0.1, zoom * d), 5);
+            offset.x = mx - wx * zoom; offset.y = my - wy * zoom;
             draw();
         };
 
         function getMouse(e) {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: (e.clientX - rect.left - offset.x) / zoom,
-                y: (e.clientY - rect.top - offset.y) / zoom
-            };
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left - offset.x)/zoom, y: (e.clientY - r.top - offset.y)/zoom };
         }
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            draw();
+        function resize() { 
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr; 
+            canvas.height = window.innerHeight * dpr; 
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            draw(); 
         }
 
         window.onload = async () => {
             resize();
             await preRenderIcons();
             window.addEventListener('resize', resize);
+            lucide.createIcons();
         };
     </script>
 </body>
 </html>
-
