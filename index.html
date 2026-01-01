@@ -9,6 +9,12 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-glow: rgba(59, 130, 246, 0.5);
+        }
+
         body {
             margin: 0;
             overflow: hidden;
@@ -43,10 +49,9 @@
             position: relative;
             width: 100vw;
             height: 100vh;
-            cursor: grab;
+            cursor: crosshair;
             z-index: 1;
         }
-        #canvas-container:active { cursor: grabbing; }
 
         .sidebar {
             background: rgba(10, 10, 10, 0.75);
@@ -67,7 +72,11 @@
             transform: scale(1.02);
         }
 
-        .active-mode { background: #0063b1 !important; border-color: #0078d4 !important; }
+        .active-mode { 
+            background: var(--primary-color) !important; 
+            border-color: var(--primary-color) !important; 
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
         .active-trash { background: #990000 !important; border-color: #ff4444 !important; }
 
         .modal-overlay {
@@ -113,6 +122,11 @@
 
         #file-input, #bg-upload-input, #bg-video-upload-input { display: none; }
         #icon-stager { position: absolute; visibility: hidden; pointer-events: none; }
+
+        .text-theme { color: var(--primary-color); }
+        .bg-theme { background-color: var(--primary-color); }
+        .border-theme { border-color: var(--primary-color); }
+        .accent-theme { accent-color: var(--primary-color); }
     </style>
 </head>
 <body>
@@ -123,42 +137,39 @@
         <video id="video-bg" class="bg-layer" loop muted playsinline></video>
     </div>
 
-    <!-- Модальное окно -->
+    <!-- Modals (Nodes, Settings) -->
     <div id="nodeModal" class="modal-overlay">
         <div class="modal-content">
-            <h3 id="modalTitle" class="text-[10px] font-bold uppercase tracking-widest text-blue-400">Объект</h3>
+            <h3 id="modalTitle" class="text-[10px] font-bold uppercase tracking-widest text-theme">Объект</h3>
             <input type="text" id="modalInput" class="input-hq" placeholder="Введите данные...">
             <div class="flex gap-2">
                 <button onclick="closeModal('nodeModal')" class="flex-1 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10px] font-bold uppercase tracking-wider">Отмена</button>
-                <button id="modalConfirm" class="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-[10px] font-bold uppercase tracking-wider">Сохранить</button>
+                <button id="modalConfirm" class="flex-1 py-2.5 rounded-lg bg-theme hover:opacity-80 text-[10px] font-bold uppercase tracking-wider">Сохранить</button>
             </div>
         </div>
     </div>
 
-    <!-- Настройки -->
     <div id="bgModal" class="modal-overlay">
         <div class="modal-content w-[380px]">
-            <h3 class="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-4">Настройки и Визуал</h3>
-            
+            <h3 class="text-[10px] font-bold uppercase tracking-widest text-theme mb-4">Настройки и Визуал</h3>
             <div class="toggle-container border border-white/5">
-                <div>
-                    <span class="text-[9px] font-bold text-white uppercase tracking-widest">Плавные линии</span>
-                    <p class="text-[7px] text-white/30 uppercase mt-0.5">Скругленные углы при поворотах</p>
-                </div>
-                <input type="checkbox" id="lineStyleToggle" checked onchange="toggleLineStyle(this.checked)" class="w-5 h-5 accent-blue-500">
+                <div><span class="text-[9px] font-bold text-white uppercase tracking-widest">Основной цвет темы</span></div>
+                <input type="color" id="themeColorPicker" value="#3b82f6" oninput="updateThemeColor(this.value)" class="w-8 h-8 rounded border-0 bg-transparent cursor-pointer">
             </div>
-
+            <div class="toggle-container border border-white/5">
+                <div><span class="text-[9px] font-bold text-white uppercase tracking-widest">Плавные линии</span></div>
+                <input type="checkbox" id="lineStyleToggle" checked onchange="toggleLineStyle(this.checked)" class="w-5 h-5 accent-theme">
+            </div>
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <button onclick="document.getElementById('bg-upload-input').click()" class="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 flex flex-col items-center gap-2 transition">
-                    <i data-lucide="image" class="w-5 h-5 text-blue-400"></i>
-                    <span class="text-[8px] font-bold uppercase">Фото / GIF</span>
+                    <i data-lucide="image" class="w-5 h-5 text-white/70"></i>
+                    <span class="text-[8px] font-bold uppercase text-white">Фото / GIF</span>
                 </button>
                 <button onclick="document.getElementById('bg-video-upload-input').click()" class="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 flex flex-col items-center gap-2 transition">
-                    <i data-lucide="clapperboard" class="w-5 h-5 text-purple-400"></i>
-                    <span class="text-[8px] font-bold uppercase">Видео-фон</span>
+                    <i data-lucide="clapperboard" class="w-5 h-5 text-white/70"></i>
+                    <span class="text-[8px] font-bold uppercase text-white">Видео-фон</span>
                 </button>
             </div>
-
             <div class="bg-white/5 p-4 rounded-xl border border-white/10 mb-4">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-[8px] font-bold text-white/40 uppercase tracking-widest">Масштабирование</span>
@@ -170,12 +181,11 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-[8px] font-bold text-white/40 uppercase tracking-widest">Прозрачность</span>
-                        <span id="opacity-val" class="text-[8px] font-bold text-blue-400">100%</span>
+                        <span id="opacity-val" class="text-[8px] font-bold text-theme">100%</span>
                     </div>
-                    <input type="range" id="bg-opacity" min="0" max="1" step="0.01" value="1" class="w-full h-1 bg-white/10 rounded appearance-none cursor-pointer" oninput="updateBgOpacity(this.value)">
+                    <input type="range" id="bg-opacity" min="0" max="1" step="0.01" value="1" class="w-full h-1 bg-white/10 rounded appearance-none cursor-pointer accent-theme" oninput="updateBgOpacity(this.value)">
                 </div>
             </div>
-
             <div class="flex gap-2">
                 <button onclick="resetBackground()" class="flex-1 py-2 rounded-lg bg-red-900/10 text-red-500 border border-red-900/20 hover:bg-red-900/20 text-[9px] font-bold uppercase">Сброс фона</button>
                 <button onclick="closeModal('bgModal')" class="flex-1 py-2 rounded-lg bg-white/10 text-white hover:bg-white/20 text-[9px] font-bold uppercase">Закрыть</button>
@@ -192,83 +202,53 @@
         <canvas id="graphCanvas"></canvas>
     </div>
 
+    <!-- Sidebar UI -->
     <div class="fixed top-6 left-6 w-[240px] sidebar rounded-[24px] p-5 flex flex-col gap-4 z-50">
         <div class="flex items-center justify-between mb-1">
             <div>
                 <h1 class="text-xs font-black text-white tracking-wider uppercase">OSINT Engine</h1>
-                <p class="text-[8px] font-bold text-blue-500 uppercase tracking-[2px] opacity-60">Release 1.3</p>
+                <p class="text-[8px] font-bold text-theme uppercase tracking-[2px] opacity-60">Release 1.3</p>
             </div>
-            <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i>
+            <div class="w-8 h-8 rounded-full bg-theme/10 flex items-center justify-center">
+                <i data-lucide="shield-check" class="w-4 h-4 text-theme"></i>
             </div>
         </div>
         
         <div class="grid grid-cols-2 gap-2">
-            <button onclick="promptNode('PERSON')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="user-search" class="w-4 h-4 text-blue-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Личность</span>
-            </button>
-            <button onclick="promptNode('BIRTHDAY')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="cake" class="w-4 h-4 text-purple-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Дата Рожд.</span>
-            </button>
-            <button onclick="promptNode('COMPANY')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="briefcase" class="w-4 h-4 text-amber-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Компания</span>
-            </button>
-            <button onclick="promptNode('DOMAIN')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="globe" class="w-4 h-4 text-indigo-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Домен</span>
-            </button>
-            <button onclick="promptNode('IP')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="network" class="w-4 h-4 text-rose-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">IP Адрес</span>
-            </button>
-            <button onclick="promptNode('PHONE')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="phone" class="w-4 h-4 text-emerald-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Телефон</span>
-            </button>
-            <button onclick="promptNode('CITY')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="map-pin" class="w-4 h-4 text-orange-400"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Город</span>
-            </button>
-            <button onclick="addNode('IMAGE')" class="node-btn h-12 rounded-xl flex flex-col items-center justify-center gap-0.5">
-                <i data-lucide="camera" class="w-4 h-4 text-white/40"></i>
-                <span class="text-[7px] font-bold opacity-50 uppercase">Фотография</span>
-            </button>
+            <button onclick="promptNode('PERSON')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="user-search" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Личность</span></button>
+            <button onclick="promptNode('BIRTHDAY')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="cake" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Дата Рожд.</span></button>
+            <button onclick="promptNode('COMPANY')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="briefcase" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Компания</span></button>
+            <button onclick="promptNode('DOMAIN')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="globe" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Домен</span></button>
+            <button onclick="promptNode('IP')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="network" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">IP Адрес</span></button>
+            <button onclick="promptNode('PHONE')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="phone" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Телефон</span></button>
+            <button onclick="promptNode('CITY')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Город</span></button>
+            <button onclick="addNode('IMAGE')" class="node-btn h-10 rounded-xl flex flex-col items-center justify-center gap-0.5"><i data-lucide="camera" class="w-3.5 h-3.5 text-white/70"></i><span class="text-[6px] font-bold opacity-50 uppercase">Фотография</span></button>
         </div>
 
         <div class="h-[1px] bg-white/5"></div>
 
-        <a href="https://osintframework.com/" target="_blank" class="w-full h-10 node-btn rounded-xl flex items-center gap-3 px-4 group">
-            <div class="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center">
-                <i data-lucide="external-link" class="w-3.5 h-3.5 text-blue-500"></i>
+        <div class="flex flex-col gap-2">
+            <span class="text-[7px] font-bold text-white/30 uppercase tracking-widest ml-1">Инструменты</span>
+            <div class="grid grid-cols-3 gap-2">
+                <button id="drawRectBtn" onclick="toggleMode('drawRect')" class="node-btn h-10 rounded-xl flex items-center justify-center" title="Квадрат"><i data-lucide="square" class="w-4 h-4 text-white/70"></i></button>
+                <button id="drawCircleBtn" onclick="toggleMode('drawCircle')" class="node-btn h-10 rounded-xl flex items-center justify-center" title="Эллипс"><i data-lucide="circle" class="w-4 h-4 text-white/70"></i></button>
+                <button id="drawArrowBtn" onclick="toggleMode('drawArrow')" class="node-btn h-10 rounded-xl flex items-center justify-center" title="Стрелка"><i data-lucide="move-up-right" class="w-4 h-4 text-white/70"></i></button>
             </div>
-            <span class="text-[9px] font-bold uppercase tracking-widest opacity-80">OSINT Framework</span>
-        </a>
+        </div>
+
+        <div class="h-[1px] bg-white/5"></div>
 
         <button onclick="openModal('bgModal')" class="w-full h-10 node-btn rounded-xl flex items-center justify-between px-4 group">
-            <div class="flex items-center gap-3">
-                <div class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
-                    <i data-lucide="settings-2" class="w-3.5 h-3.5 text-emerald-500"></i>
-                </div>
-                <span class="text-[9px] font-bold uppercase tracking-widest opacity-80">Настройки</span>
-            </div>
+            <div class="flex items-center gap-3"><div class="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center"><i data-lucide="palette" class="w-3.5 h-3.5 text-white/70"></i></div><span class="text-[9px] font-bold uppercase tracking-widest opacity-80">Визуал</span></div>
             <i data-lucide="chevron-right" class="w-3 h-3 opacity-20 group-hover:translate-x-1 transition"></i>
         </button>
 
         <div class="flex gap-2">
-            <button id="linkBtn" onclick="toggleMode('link')" class="flex-1 h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold">
-                <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-blue-400"></i> СВЯЗЬ
-            </button>
-            <button id="trashBtn" onclick="toggleMode('trash')" class="w-10 h-10 node-btn rounded-xl flex items-center justify-center">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i>
-            </button>
+            <button id="linkBtn" onclick="toggleMode('link')" class="flex-1 h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold"><i data-lucide="plus-circle" class="w-3.5 h-3.5 text-white/70"></i> СВЯЗЬ</button>
+            <button id="trashBtn" onclick="toggleMode('trash')" class="w-10 h-10 node-btn rounded-xl flex items-center justify-center" title="Удалить"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i></button>
         </div>
 
-        <button onclick="downloadProject()" class="w-full h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold text-blue-400 border-blue-900/30 bg-blue-500/10 hover:bg-blue-500/20">
-            <i data-lucide="save" class="w-3.5 h-3.5"></i> ЭКСПОРТ (PNG)
-        </button>
+        <button onclick="downloadProject()" class="w-full h-10 node-btn rounded-xl flex items-center justify-center gap-2 text-[9px] font-bold text-theme border-theme/30 bg-theme/10 hover:bg-theme/20"><i data-lucide="save" class="w-3.5 h-3.5"></i> ЭКСПОРТ (PNG)</button>
     </div>
 
     <script>
@@ -287,24 +267,22 @@
 
         let nodes = [];
         let edges = [];
+        let shapes = []; 
         let offset = { x: 0, y: 0 };
         let zoom = 1;
         let isDragging = false;
         let dragNode = null;
+        let dragShape = null;
         let selectedNode = null;
         let lastMousePos = { x: 0, y: 0 };
         let currentMode = 'select';
         let linkSource = null;
         let lastClickTime = 0;
         let useCurvedLines = true;
+        let activeShape = null; 
+        let primaryColor = '#3b82f6';
 
         const NODE_RADIUS = 36;
-        const THEME = {
-            edge: 'rgba(59, 130, 246, 0.7)',
-            grid: 'rgba(255, 255, 255, 0.05)',
-            text: '#FFFFFF'
-        };
-
         const ICON_MAP = {
             'PERSON': 'user-search', 'BIRTHDAY': 'cake', 'COMPANY': 'briefcase',
             'DOMAIN': 'globe', 'IP': 'network', 'PHONE': 'phone', 'CITY': 'map-pin'
@@ -315,11 +293,19 @@
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
+        function updateThemeColor(color) {
+            primaryColor = color;
+            document.documentElement.style.setProperty('--primary-color', color);
+            document.documentElement.style.setProperty('--primary-glow', color + '80');
+            draw();
+        }
+
         function toggleLineStyle(isCurved) {
             useCurvedLines = isCurved;
             draw();
         }
 
+        // Project logic functions...
         function promptNode(type, existingNode = null) {
             const modal = document.getElementById('nodeModal');
             const title = document.getElementById('modalTitle');
@@ -348,11 +334,7 @@
             input.onkeydown = (e) => { if(e.key === 'Enter') handleConfirm(); };
         }
 
-        function updateBgFitting(mode) {
-            layers.image.style.objectFit = mode;
-            layers.video.style.objectFit = mode;
-        }
-
+        function updateBgFitting(mode) { layers.image.style.objectFit = mode; layers.video.style.objectFit = mode; }
         function updateBgOpacity(val) {
             layers.image.style.opacity = val;
             layers.video.style.opacity = val;
@@ -476,8 +458,14 @@
         window.toggleMode = (mode) => {
             currentMode = currentMode === mode ? 'select' : mode;
             linkSource = null;
+            
             document.getElementById('linkBtn').classList.toggle('active-mode', currentMode === 'link');
             document.getElementById('trashBtn').classList.toggle('active-trash', currentMode === 'trash');
+            document.getElementById('drawRectBtn').classList.toggle('active-mode', currentMode === 'drawRect');
+            document.getElementById('drawCircleBtn').classList.toggle('active-mode', currentMode === 'drawCircle');
+            document.getElementById('drawArrowBtn').classList.toggle('active-mode', currentMode === 'drawArrow');
+            
+            canvas.style.cursor = (currentMode.startsWith('draw')) ? 'crosshair' : 'grab';
             draw();
         };
 
@@ -501,6 +489,9 @@
                 renderCtx.scale(zoom, zoom);
                 drawGrid(renderCtx);
             }
+
+            shapes.forEach(s => drawShape(s, renderCtx, isExport));
+            if (activeShape) drawShape(activeShape, renderCtx, isExport);
 
             edges.forEach(e => {
                 const f = nodes.find(n => n.id === e.from);
@@ -531,7 +522,7 @@
                     renderCtx.drawImage(iconCache[n.type], -is/2, -is/2, is, is);
                 }
 
-                renderCtx.strokeStyle = (linkSource === n) ? '#0078D4' : (selectedNode === n && !isExport ? '#FFF' : 'rgba(255,255,255,0.1)');
+                renderCtx.strokeStyle = (linkSource === n) ? primaryColor : (selectedNode === n && !isExport ? '#FFF' : 'rgba(255,255,255,0.1)');
                 renderCtx.lineWidth = (selectedNode === n ? 3 : 1.5) / (isExport ? 1 : zoom);
                 renderCtx.stroke();
                 if (n.type !== 'IMAGE') drawLabel(n, r, renderCtx, isExport);
@@ -539,56 +530,93 @@
             });
         }
 
+        function drawShape(s, rCtx, isExp) {
+            rCtx.save();
+            rCtx.strokeStyle = primaryColor;
+            rCtx.lineWidth = 4 / (isExp ? 1 : zoom);
+            rCtx.lineCap = 'round';
+            rCtx.lineJoin = 'round';
+
+            if (s.type === 'rect') {
+                rCtx.strokeRect(s.x, s.y, s.w, s.h);
+            } else if (s.type === 'circle') {
+                rCtx.beginPath();
+                rCtx.ellipse(s.x + s.w/2, s.y + s.h/2, Math.abs(s.w/2), Math.abs(s.h/2), 0, 0, Math.PI * 2);
+                rCtx.stroke();
+            } else if (s.type === 'arrow') {
+                const tx = s.x + s.w, ty = s.y + s.h;
+                const headSize = 18 / (isExp ? 1 : zoom);
+                const angle = Math.atan2(s.h, s.w);
+                
+                // Исправленное положение наконечника стрелки (линия не заходит внутрь острия)
+                const lineEndX = tx - (headSize - 2) * Math.cos(angle);
+                const lineEndY = ty - (headSize - 2) * Math.sin(angle);
+
+                rCtx.beginPath();
+                rCtx.moveTo(s.x, s.y);
+                rCtx.lineTo(lineEndX, lineEndY);
+                rCtx.stroke();
+                
+                rCtx.beginPath();
+                rCtx.moveTo(tx, ty);
+                rCtx.lineTo(tx - headSize * Math.cos(angle - 0.5), ty - headSize * Math.sin(angle - 0.5));
+                rCtx.lineTo(tx - headSize * Math.cos(angle + 0.5), ty - headSize * Math.sin(angle + 0.5));
+                rCtx.closePath();
+                rCtx.fillStyle = primaryColor;
+                rCtx.fill();
+            }
+            rCtx.restore();
+        }
+
         function drawEdge(n1, n2, rCtx, isExp) {
             rCtx.save();
-            rCtx.strokeStyle = THEME.edge;
+            rCtx.strokeStyle = primaryColor + 'B3'; 
             rCtx.lineWidth = 2 / (isExp ? 1 : zoom);
             
             const dx = n2.x - n1.x, dy = n2.y - n1.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < NODE_RADIUS * 2) { rCtx.restore(); return; }
-
+            
             const nx = dx / dist, ny = dy / dist;
             const sX = n1.x + nx * NODE_RADIUS, sY = n1.y + ny * NODE_RADIUS;
             
-            // Точка, где линия должна войти в целевой узел (с учетом зазора)
-            const gap = 12 / (isExp ? 1 : zoom);
-            const eX = n2.x - nx * (NODE_RADIUS + gap), eY = n2.y - ny * (NODE_RADIUS + gap);
+            const headSize = 12 / (isExp ? 1 : zoom);
+            const gap = 4 / (isExp ? 1 : zoom);
+            const eX = n2.x - nx * (NODE_RADIUS + gap);
+            const eY = n2.y - ny * (NODE_RADIUS + gap);
+            
+            // Расчет точки остановки линии (чтобы не заходила под наконечник)
+            const lineEndX = eX - headSize * nx;
+            const lineEndY = eY - headSize * ny;
 
             rCtx.beginPath();
             rCtx.moveTo(sX, sY);
-
+            
             let angle;
             if (useCurvedLines) {
-                // Кривая Безье: контрольная точка находится на вертикали/горизонтали для мягкости
-                const cpX = sX + (eX - sX) * 0.5;
-                const cpY = sY; // Первая контрольная точка
-                const cp2X = cpX;
-                const cp2Y = eY; // Вторая контрольная точка
+                // Плавная S-образная кривая
+                const cp1X = sX + (n2.x > n1.x ? 50 : -50);
+                const cp1Y = sY;
+                const cp2X = lineEndX + (n2.x > n1.x ? -50 : 50);
+                const cp2Y = lineEndY;
                 
-                rCtx.bezierCurveTo(cpX, cpY, cp2X, cp2Y, eX, eY);
+                rCtx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, lineEndX, lineEndY);
                 rCtx.stroke();
-
-                // Расчет угла касательной в конечной точке кривой Безье (t=1)
-                // Формула производной: 3*(1-t)^2*(P1-P0) + 6*(1-t)*t*(P2-P1) + 3*t^2*(P3-P2)
-                // При t=1 имеем: 3*(P3 - P2)
-                angle = Math.atan2(eY - cp2Y, eX - cp2X);
+                angle = Math.atan2(lineEndY - cp2Y, lineEndX - cp2X);
             } else {
-                rCtx.lineTo(eX, eY);
+                rCtx.lineTo(lineEndX, lineEndY);
                 rCtx.stroke();
-                angle = Math.atan2(eY - sY, eX - sX);
+                angle = Math.atan2(lineEndY - sY, lineEndX - sX);
             }
-
-            // Отрисовка наконечника стрелки
-            const head = 10 / (isExp ? 1 : zoom);
+            
+            // Наконечник
             rCtx.beginPath();
             rCtx.moveTo(eX, eY);
-            rCtx.lineTo(eX - head * Math.cos(angle - 0.4), eY - head * Math.sin(angle - 0.4));
-            rCtx.lineTo(eX - head * Math.cos(angle + 0.4), eY - head * Math.sin(angle + 0.4));
+            rCtx.lineTo(eX - headSize * Math.cos(angle - 0.4), eY - headSize * Math.sin(angle - 0.4));
+            rCtx.lineTo(eX - headSize * Math.cos(angle + 0.4), eY - headSize * Math.sin(angle + 0.4));
             rCtx.closePath();
-            rCtx.fillStyle = THEME.edge;
+            rCtx.fillStyle = primaryColor;
             rCtx.fill();
-            
             rCtx.restore();
         }
 
@@ -596,7 +624,7 @@
             const size = 60;
             const l = -offset.x/zoom, t = -offset.y/zoom;
             const r = l + canvas.width/zoom, b = t + canvas.height/zoom;
-            rCtx.beginPath(); rCtx.strokeStyle = THEME.grid; rCtx.lineWidth = 1/zoom;
+            rCtx.beginPath(); rCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)'; rCtx.lineWidth = 1/zoom;
             for (let x = Math.floor(l/size)*size; x < r; x += size) { rCtx.moveTo(x, t); rCtx.lineTo(x, b); }
             for (let y = Math.floor(t/size)*size; y < b; y += size) { rCtx.moveTo(l, y); rCtx.lineTo(r, y); }
             rCtx.stroke();
@@ -613,13 +641,37 @@
             rCtx.fillText(text, 0, radius + 23);
         }
 
+        function isPointInShape(mx, my, s) {
+            if (s.type === 'rect') {
+                const x = Math.min(s.x, s.x + s.w), y = Math.min(s.y, s.y + s.h);
+                const w = Math.abs(s.w), h = Math.abs(s.h);
+                return mx >= x && mx <= x + w && my >= y && my <= y + h;
+            }
+            if (s.type === 'circle') {
+                const cx = s.x + s.w/2, cy = s.y + s.h/2;
+                const rx = Math.abs(s.w/2), ry = Math.abs(s.h/2);
+                if (rx === 0 || ry === 0) return false;
+                return (Math.pow(mx - cx, 2) / Math.pow(rx, 2)) + (Math.pow(my - cy, 2) / Math.pow(ry, 2)) <= 1;
+            }
+            if (s.type === 'arrow') {
+                const x1 = s.x, y1 = s.y, x2 = s.x + s.w, y2 = s.y + s.h;
+                const distToLine = Math.abs((y2-y1)*mx - (x2-x1)*my + x2*y1 - y2*x1) / Math.sqrt(Math.pow(y2-y1, 2) + Math.pow(x2-x1, 2));
+                const withinBounds = mx >= Math.min(x1, x2)-15 && mx <= Math.max(x1, x2)+15 && my >= Math.min(y1, y2)-15 && my <= Math.max(y1, y2)+15;
+                return distToLine < 15 && withinBounds;
+            }
+            return false;
+        }
+
         window.downloadProject = () => {
-            if (!nodes.length) return;
+            if (!nodes.length && !shapes.length) return;
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            nodes.forEach(n => {
-                minX = Math.min(minX, n.x - 200); minY = Math.min(minY, n.y - 200);
-                maxX = Math.max(maxX, n.x + 200); maxY = Math.max(maxY, n.y + 300);
+            [...nodes, ...shapes].forEach(n => {
+                const padding = 200;
+                const nx = n.x, ny = n.y;
+                minX = Math.min(minX, nx - padding); minY = Math.min(minY, ny - padding);
+                maxX = Math.max(maxX, nx + padding); maxY = Math.max(maxY, ny + padding);
             });
+            if (minX === Infinity) { minX = 0; minY = 0; maxX = canvas.width; maxY = canvas.height; }
             const dpr = 2;
             const exp = document.createElement('canvas');
             exp.width = (maxX - minX) * dpr; exp.height = (maxY - minY) * dpr;
@@ -634,13 +686,22 @@
 
         canvas.onmousedown = (e) => {
             const m = getMouse(e);
-            const hit = nodes.slice().reverse().find(n => Math.hypot(n.x - m.x, n.y - m.y) < NODE_RADIUS);
-            const now = Date.now();
             
+            if (currentMode === 'trash') {
+                const shapeIdx = shapes.findIndex(s => isPointInShape(m.x, m.y, s));
+                if (shapeIdx !== -1) { shapes.splice(shapeIdx, 1); draw(); return; }
+            }
+
+            const hit = nodes.slice().reverse().find(n => Math.hypot(n.x - m.x, n.y - m.y) < NODE_RADIUS);
+            
+            if (currentMode.startsWith('draw')) {
+                activeShape = { type: currentMode.replace('draw', '').toLowerCase(), x: m.x, y: m.y, w: 0, h: 0 };
+                return;
+            }
+
             if (hit) {
-                if (now - lastClickTime < 250 && currentMode === 'select') {
-                    promptNode(hit.type, hit); return;
-                }
+                const now = Date.now();
+                if (now - lastClickTime < 250 && currentMode === 'select') { promptNode(hit.type, hit); return; }
                 lastClickTime = now;
                 if (currentMode === 'trash') {
                     nodes = nodes.filter(n => n !== hit);
@@ -653,21 +714,41 @@
                         linkSource = null;
                     }
                 } else { dragNode = hit; selectedNode = hit; }
-            } else { isDragging = true; selectedNode = null; lastMousePos = {x: e.clientX, y: e.clientY}; }
-            draw();
-        };
-
-        window.onmousemove = (e) => {
-            if (isDragging) {
-                offset.x += e.clientX - lastMousePos.x; offset.y += e.clientY - lastMousePos.y;
-                lastMousePos = {x: e.clientX, y: e.clientY};
-            } else if (dragNode) {
-                dragNode.x += e.movementX/zoom; dragNode.y += e.movementY/zoom;
+            } else { 
+                const sHit = shapes.slice().reverse().find(s => isPointInShape(m.x, m.y, s));
+                if (sHit && currentMode === 'select') {
+                    dragShape = sHit;
+                    lastMousePos = { x: m.x, y: m.y };
+                } else {
+                    isDragging = true; selectedNode = null; lastMousePos = { x: e.clientX, y: e.clientY }; 
+                }
             }
             draw();
         };
 
-        window.onmouseup = () => { isDragging = false; dragNode = null; draw(); };
+        window.onmousemove = (e) => {
+            const m = getMouse(e);
+            if (activeShape) { activeShape.w = m.x - activeShape.x; activeShape.h = m.y - activeShape.y; draw(); return; }
+            if (isDragging) {
+                offset.x += e.clientX - lastMousePos.x; offset.y += e.clientY - lastMousePos.y;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+            } else if (dragNode) {
+                dragNode.x += e.movementX/zoom; dragNode.y += e.movementY/zoom;
+            } else if (dragShape) {
+                dragShape.x += (m.x - lastMousePos.x); dragShape.y += (m.y - lastMousePos.y);
+                lastMousePos = { x: m.x, y: m.y };
+            }
+            draw();
+        };
+
+        window.onmouseup = () => { 
+            if (activeShape) {
+                if (Math.abs(activeShape.w) > 5 || Math.abs(activeShape.h) > 5) shapes.push(activeShape);
+                activeShape = null;
+            }
+            isDragging = false; dragNode = null; dragShape = null;
+            draw(); 
+        };
 
         canvas.onwheel = (e) => {
             e.preventDefault();
@@ -696,6 +777,7 @@
             resize(); await preRenderIcons();
             window.addEventListener('resize', resize);
             lucide.createIcons();
+            updateThemeColor('#3b82f6');
         };
     </script>
 </body>
